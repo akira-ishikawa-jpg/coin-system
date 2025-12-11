@@ -50,7 +50,13 @@ export default function MyPage() {
       return d.toISOString().slice(0,10)
     })()
 
-    const { data: sent } = await supabase.from('coin_transactions').select('coins').eq('sender_id', emp.id).eq('week_start', weekStart)
+    // 今週の取引を取得（week_startの値に関わらず、created_atで判定）
+    const weekStartDate = new Date(weekStart)
+    const { data: sent } = await supabase
+      .from('coin_transactions')
+      .select('coins')
+      .eq('sender_id', emp.id)
+      .gte('created_at', weekStartDate.toISOString())
     const sentSum = (sent || []).reduce((s:any, r:any) => s + (r.coins||0), 0)
 
     const { data: setting } = await supabase.from('settings').select('value').eq('key','default_weekly_coins').limit(1).maybeSingle()

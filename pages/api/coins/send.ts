@@ -36,7 +36,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!receiver) return res.status(400).json({ error: 'receiver not found' })
 
   const weekStart = getWeekStart()
-  const { data: sentTx } = await supabase.from('coin_transactions').select('coins').eq('sender_id', sender.id).eq('week_start', weekStart)
+  const weekStartDate = new Date(weekStart + 'T00:00:00.000Z')
+  const { data: sentTx } = await supabase
+    .from('coin_transactions')
+    .select('coins')
+    .eq('sender_id', sender.id)
+    .gte('created_at', weekStartDate.toISOString())
   const sentSum = (sentTx || []).reduce((s:any,r:any)=>s+(r.coins||0),0)
 
   const { data: setting } = await supabase.from('settings').select('value').eq('key','default_weekly_coins').limit(1).maybeSingle()
