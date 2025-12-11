@@ -18,8 +18,6 @@ export default function AdminPage() {
   const [addMessage, setAddMessage] = useState('')
   const [addLoading, setAddLoading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [bonusUserId, setBonusUserId] = useState<string | null>(null)
-  const [bonusAmount, setBonusAmount] = useState<number>(0)
 
   useEffect(() => { load() }, [])
 
@@ -171,47 +169,6 @@ export default function AdminPage() {
     }
   }
 
-  async function handleAddBonus(employeeId: string) {
-    const amount = bonusAmount
-    if (!amount || amount <= 0) {
-      alert('❌ 正しい数値を入力してください')
-      return
-    }
-
-    try {
-      const { data: emp } = await supabase
-        .from('employees')
-        .select('bonus_coins')
-        .eq('id', employeeId)
-        .limit(1)
-        .maybeSingle()
-
-      if (!emp) {
-        alert('❌ ユーザーが見つかりません')
-        return
-      }
-
-      const currentBonus = (emp as any).bonus_coins || 0
-      const newBonus = currentBonus + amount
-
-      const { error } = await supabase
-        .from('employees')
-        .update({ bonus_coins: newBonus })
-        .eq('id', employeeId)
-
-      if (error) {
-        alert('❌ ボーナスコイン追加に失敗しました')
-      } else {
-        alert(`✅ ${amount}コインを追加しました（合計: ${newBonus}）`)
-        setBonusUserId(null)
-        setBonusAmount(0)
-        await load()
-      }
-    } catch (error: any) {
-      alert('❌ エラー: ' + error.message)
-    }
-  }
-
   if (unauth) return (
     <>
       <Header />
@@ -341,46 +298,13 @@ export default function AdminPage() {
                         <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_sent}</td>
                         <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_likes || 0}</td>
                         <td className="p-3 text-center">
-                          <div className="flex gap-2 justify-center">
-                            {bonusUserId === r.employee_id ? (
-                              <div className="flex gap-1">
-                                <input
-                                  type="number"
-                                  value={bonusAmount}
-                                  onChange={(e) => setBonusAmount(Number(e.target.value))}
-                                  className="w-20 border border-slate-300 px-2 py-1 rounded text-sm"
-                                  placeholder="100"
-                                  min="1"
-                                />
-                                <button
-                                  onClick={() => handleAddBonus(r.employee_id)}
-                                  className="bg-green-500 text-white px-2 py-1 rounded text-sm hover:bg-green-600"
-                                >
-                                  追加
-                                </button>
-                                <button
-                                  onClick={() => {setBonusUserId(null); setBonusAmount(0)}}
-                                  className="bg-gray-400 text-white px-2 py-1 rounded text-sm hover:bg-gray-500"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => setBonusUserId(r.employee_id)}
-                                className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 transition"
-                              >
-                                コイン追加
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleDeleteUser(r.employee_id, r.name)}
-                              disabled={deletingId === r.employee_id}
-                              className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition disabled:opacity-50"
-                            >
-                              {deletingId === r.employee_id ? '削除中...' : '削除'}
-                            </button>
-                          </div>
+                          <button
+                            onClick={() => handleDeleteUser(r.employee_id, r.name)}
+                            disabled={deletingId === r.employee_id}
+                            className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition disabled:opacity-50"
+                          >
+                            {deletingId === r.employee_id ? '削除中...' : '削除'}
+                          </button>
                         </td>
                       </tr>
                     ))}

@@ -31,7 +31,7 @@ export default function MyPage() {
     setUserEmail(user.email || null)
 
     // get employee record
-    const { data: emp } = await supabase.from('employees').select('id, name, department, bonus_coins').eq('email', user.email).limit(1).maybeSingle()
+    const { data: emp } = await supabase.from('employees').select('id, name, department').eq('email', user.email).limit(1).maybeSingle()
     if (!emp) return
     setEmpId(emp.id)
     setUserName(emp.name || '')
@@ -55,8 +55,7 @@ export default function MyPage() {
 
     const { data: setting } = await supabase.from('settings').select('value').eq('key','default_weekly_coins').limit(1).maybeSingle()
     const defaultWeekly = setting ? parseInt(setting.value,10) : 250
-    const bonusCoins = (emp as any).bonus_coins || 0
-    setRemaining(defaultWeekly + bonusCoins - sentSum)
+    setRemaining(defaultWeekly - sentSum)
 
     // month received and sent
     const now = new Date()
