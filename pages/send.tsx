@@ -10,14 +10,46 @@ export default function SendPage() {
   const [coins, setCoins] = useState<number>(10)
   const [message, setMessage] = useState('')
   const [status, setStatus] = useState('')
+  const [remaining, setRemaining] = useState<number | null>(null)
 
   useEffect(() => {
     fetchEmployees()
+    fetchRemaining()
   }, [])
 
   async function fetchEmployees() {
     const { data } = await supabase.from('employees').select('id,name')
     setEmployees((data as any) || [])
+  }
+
+  async function fetchRemaining() {
+    const { data } = await supabase.auth.getUser()
+    const user = data.user
+    if (!user || !user.email) return
+
+    const { data: emp } = await supabase.from('employees').select('id').eq('email', user.email).limit(1).maybeSingle()
+    if (!emp) return
+
+    const weekStart = (() => {
+      const d = new Date()
+      const day = d.getDay()
+      const diff = (day === 0 ? -6 : 1) - day
+      d.setDate(d.getDate() + diff)
+      d.setHours(0,0,0,0)
+      return d.toISOString().slice(0,10)
+    })()
+
+    const weekStartDate = new Date(weekStart)
+    const { data: sent } = await supabase
+      .from('coin_transactions')
+      .select('coins')
+      .eq('sender_id', emp.id)
+      .gte('created_at', weekStartDate.toISOString())
+    const sentSum = (sent || []).reduce((s:any, r:any) => s + (r.coins||0), 0)
+
+    const { data: setting } = await supabase.from('settings').select('value').eq('key','default_weekly_coins').limit(1).maybeSingle()
+    const defaultWeekly = setting ? parseInt(setting.value,10) : 250
+    setRemaining(defaultWeekly - sentSum)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -38,8 +70,15 @@ export default function SendPage() {
       body: JSON.stringify(payload)
     })
     const j = await res.json()
-    if (res.ok) setStatus('贈呈しました')
-    else setStatus('失敗: ' + (j.error || j.message || ''))
+    if (res.ok) {
+      setStatus('贈呈しました')
+      setReceiverId('')
+      setCoins(10)
+      setMessage('')
+      await fetchRemaining()
+    } else {
+      setStatus('失敗: ' + (j.error || j.message || ''))
+    }
   }
 
   return (
@@ -49,7 +88,17 @@ export default function SendPage() {
         <div className="container mx-auto max-w-2xl">
           <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-8">
             <h2 className="text-3xl font-bold mb-2 text-center text-slate-900">コインを贈る</h2>
-            <p className="text-center text-gray-600 mb-8">感謝のメッセージと一緒にコインを贈呈します</p>
+            <p className="text-center text-gray-600 mb-2">感謝のメッセージと一緒にコインを贈呈します</p>
+            
+            {remaining !== null && (
+              <div className="text-center mb-6">
+                <div className="inline-block bg-teal-50 border border-teal-200 rounded-lg px-6 py-3">
+                  <span className="text-sm text-gray-600">今週の残コイン: </span>
+                  <span className="text-2xl font-bold text-teal-600">{remaining}</span>
+                  <span className="text-sm text-gray-600"> / 250</span>
+                </div>
+              </div>
+            )}
             
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
@@ -68,18 +117,25 @@ export default function SendPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">コイン数（1～300）</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  コイン数（1～{remaining !== null ? Math.min(remaining, 300) : 300}）
+                </label>
                 <div className="flex items-center gap-4">
                   <input 
                     type="range" 
                     min={1} 
-                    max={300} 
-                    value={coins} 
+                    max={remaining !== null ? Math.min(remaining, 300) : 300} 
+                    value={Math.min(coins, remaining !== null ? remaining : 300)} 
                     onChange={(e) => setCoins(Number(e.target.value))} 
                     className="flex-1 accent-teal-600"
                   />
-                  <span className="text-2xl font-bold text-teal-600 min-w-20 text-right">{coins}</span>
+                  <span className={`text-2xl font-bold min-w-20 text-right ${
+                    remaining !== null && coins > remaining ? 'text-red-600' : 'text-teal-600'
+                  }`}>{coins}</span>
                 </div>
+                {remaining !== null && coins > remaining && (
+                  <p className="text-sm text-red-600 mt-2">残コインを超えています</p>
+                )}
               </div>
 
               <div>
@@ -95,7 +151,9 @@ export default function SendPage() {
               </div>
 
               <button 
-                className="w-full bg-teal-600 text-white px-4 py-3 rounded-md font-bold hover:bg-teal-700 transition"
+                type="submit"
+                disabled={remaining !== null && coins > remaining}
+                className="w-full bg-teal-600 text-white px-4 py-3 rounded-md font-bold hover:bg-teal-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 贈呈する
               </button>
