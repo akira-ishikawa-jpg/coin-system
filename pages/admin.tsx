@@ -57,7 +57,7 @@ export default function AdminPage() {
           }
         })
       )
-      setRows(stats.filter(s => s.total_received > 0 || s.total_sent > 0))
+      setRows(stats)
     }
 
     setLoading(false)
