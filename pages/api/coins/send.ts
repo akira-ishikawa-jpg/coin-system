@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!receiver_id || !coins) return res.status(400).json({ error: 'missing params' })
 
   const senderEmail = authData.user.email
-  const { data: sender } = await supabase.from('employees').select('id,name,slack_id').eq('email', senderEmail).limit(1).maybeSingle()
+  const { data: sender } = await supabase.from('employees').select('id,name,slack_id,bonus_coins').eq('email', senderEmail).limit(1).maybeSingle()
   const { data: receiver } = await supabase.from('employees').select('id,name,slack_id').eq('id', receiver_id).limit(1).maybeSingle()
   if (!sender) return res.status(400).json({ error: 'sender not found' })
   if (!receiver) return res.status(400).json({ error: 'receiver not found' })
@@ -41,7 +41,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { data: setting } = await supabase.from('settings').select('value').eq('key','default_weekly_coins').limit(1).maybeSingle()
   const defaultWeekly = setting ? parseInt(setting.value,10) : 250
-  const remaining = defaultWeekly - sentSum
+  const bonusCoins = (sender as any).bonus_coins || 0
+  const remaining = defaultWeekly + bonusCoins - sentSum
   if (coins > remaining) return res.status(400).json({ error: `残コイン不足: ${remaining}` })
 
   const insertPayload = {
