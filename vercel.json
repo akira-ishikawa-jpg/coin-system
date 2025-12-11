@@ -1,0 +1,9 @@
+{
+  "crons": [{
+    "path": "/api/tasks/distribute_weekly",
+    "schedule": "0 9 ? * MON"
+  }, {
+    "path": "/api/tasks/monthly_close",
+    "schedule": "0 9 1 * ?"
+  }]
+}
