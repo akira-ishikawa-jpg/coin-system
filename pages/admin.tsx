@@ -17,6 +17,7 @@ export default function AdminPage() {
   const [newPassword, setNewPassword] = useState('')
   const [addMessage, setAddMessage] = useState('')
   const [addLoading, setAddLoading] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => { load() }, [])
 
@@ -125,6 +126,46 @@ export default function AdminPage() {
       setAddMessage('❌ エラー: ' + error.message)
     } finally {
       setAddLoading(false)
+    }
+  }
+
+  async function handleDeleteUser(employeeId: string, name: string) {
+    if (!confirm(`本当に「${name}」を削除しますか？この操作は取り消せません。`)) {
+      return
+    }
+
+    setDeletingId(employeeId)
+
+    try {
+      const sessionRes = await supabase.auth.getSession()
+      const token = (sessionRes as any)?.data?.session?.access_token
+      if (!token) {
+        alert('❌ 認証エラー')
+        setDeletingId(null)
+        return
+      }
+
+      const res = await fetch('/api/admin/delete-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ employeeId })
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        alert('✅ ユーザーを削除しました')
+        await load()
+      } else {
+        alert('❌ ' + (data.error || 'ユーザー削除に失敗しました'))
+      }
+    } catch (error: any) {
+      alert('❌ エラー: ' + error.message)
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -244,6 +285,7 @@ export default function AdminPage() {
                       <th className="p-3 text-right font-bold text-gray-700">月次受取合計</th>
                       <th className="p-3 text-right font-bold text-gray-700">月次贈呈合計</th>
                       <th className="p-3 text-right font-bold text-gray-700">月次いいね合計</th>
+                      <th className="p-3 text-center font-bold text-gray-700">操作</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -255,6 +297,15 @@ export default function AdminPage() {
                         <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_received}</td>
                         <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_sent}</td>
                         <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_likes || 0}</td>
+                        <td className="p-3 text-center">
+                          <button
+                            onClick={() => handleDeleteUser(r.employee_id, r.name)}
+                            disabled={deletingId === r.employee_id}
+                            className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition disabled:opacity-50"
+                          >
+                            {deletingId === r.employee_id ? '削除中...' : '削除'}
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
