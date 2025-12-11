@@ -15,6 +15,7 @@ export default function MyPage() {
   const [editMode, setEditMode] = useState(false)
   const [editName, setEditName] = useState('')
   const [editEmail, setEditEmail] = useState('')
+  const [editDepartment, setEditDepartment] = useState('')
   const [editPassword, setEditPassword] = useState('')
   const [editMessage, setEditMessage] = useState('')
   const [editLoading, setEditLoading] = useState(false)
@@ -37,6 +38,7 @@ export default function MyPage() {
     setDepartment(emp.department || '')
     setEditName(emp.name || '')
     setEditEmail(user.email || '')
+    setEditDepartment(emp.department || '')
 
     // compute week start
     const weekStart = (() => {
@@ -82,14 +84,18 @@ export default function MyPage() {
     setEditMessage('')
     
     try {
-      // Update name in employees table
-      if (editName !== userName) {
-        const { error: nameError } = await supabase
+      // Update name and/or department in employees table
+      const updates: any = {}
+      if (editName !== userName) updates.name = editName
+      if (editDepartment !== department) updates.department = editDepartment
+      
+      if (Object.keys(updates).length > 0) {
+        const { error: updateError } = await supabase
           .from('employees')
-          .update({ name: editName })
+          .update(updates)
           .eq('id', empId)
         
-        if (nameError) throw nameError
+        if (updateError) throw updateError
       }
 
       // Update email in Supabase Auth and employees table
@@ -161,6 +167,16 @@ export default function MyPage() {
                       onChange={(e) => setEditEmail(e.target.value)}
                       className="w-full border border-slate-300 p-3 rounded-md focus:outline-none focus:border-teal-500"
                       placeholder="email@example.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">部署</label>
+                    <input
+                      type="text"
+                      value={editDepartment}
+                      onChange={(e) => setEditDepartment(e.target.value)}
+                      className="w-full border border-slate-300 p-3 rounded-md focus:outline-none focus:border-teal-500"
+                      placeholder="営業"
                     />
                   </div>
                   <div>
