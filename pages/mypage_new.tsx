@@ -17,7 +17,7 @@ export default function MyPage() {
   async function load() {
     const { data } = await supabase.auth.getUser()
     const user = data.user
-    if (!user) return
+    if (!user || !user.email) return
     setUserEmail(user.email)
 
     // get employee record
@@ -54,7 +54,7 @@ export default function MyPage() {
       const ids = new Set<string>()
       tx.forEach((t:any) => { if (t.sender_id) ids.add(t.sender_id); if (t.receiver_id) ids.add(t.receiver_id) })
       const { data: emps } = await supabase.from('employees').select('id,name').in('id', Array.from(ids))
-      const empMap: Record<string, string> = {}
+      const empMap = {} as { [key: string]: string }
       (emps||[]).forEach((e:any) => { empMap[e.id] = e.name })
       const txList: Transaction[] = tx.map((t:any) => ({
         id: t.id,
