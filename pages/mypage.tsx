@@ -270,7 +270,7 @@ export default function MyPage() {
                       return (
                         <tr key={tx.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
                           <td className="p-3 text-gray-700">{date}</td>
-                          <td className={`p-3 font-bold ${isSent ? 'text-slate-600' : 'text-blue-600'}`}>
+                          <td className="p-3 font-bold text-slate-600">
                             {isSent ? '贈呈' : '受信'}
                           </td>
                           <td className="p-3 text-gray-700">{partnerName || '-'}</td>
