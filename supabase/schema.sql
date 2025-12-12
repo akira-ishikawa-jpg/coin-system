@@ -139,14 +139,26 @@ RETURNS TABLE(employee_id uuid, name text, email text, department text, total_re
         AND ct.created_at >= make_date(year_in, month_in, 1)
         AND ct.created_at < (make_date(year_in, month_in, 1) + INTERVAL '1 month')
     ), 0)::int AS total_sent,
-    COALESCE((
-      SELECT COUNT(*)
-      FROM coin_transactions ct
-      INNER JOIN transaction_likes tl ON tl.transaction_id = ct.id
-      WHERE ct.receiver_id = e.id
-        AND ct.created_at >= make_date(year_in, month_in, 1)
-        AND ct.created_at < (make_date(year_in, month_in, 1) + INTERVAL '1 month')
-    ), 0)::int AS total_likes
+    (
+      -- 自分が受け取ったコインに対するいいね数
+      COALESCE((
+        SELECT COUNT(*)
+        FROM coin_transactions ct
+        INNER JOIN transaction_likes tl ON tl.transaction_id = ct.id
+        WHERE ct.receiver_id = e.id
+          AND ct.created_at >= make_date(year_in, month_in, 1)
+          AND ct.created_at < (make_date(year_in, month_in, 1) + INTERVAL '1 month')
+      ), 0) +
+      -- 自分が押したいいね数
+      COALESCE((
+        SELECT COUNT(*)
+        FROM transaction_likes tl
+        INNER JOIN coin_transactions ct ON ct.id = tl.transaction_id
+        WHERE tl.employee_id = e.id
+          AND ct.created_at >= make_date(year_in, month_in, 1)
+          AND ct.created_at < (make_date(year_in, month_in, 1) + INTERVAL '1 month')
+      ), 0)
+    )::int AS total_likes
   FROM employees e;
 $$ LANGUAGE sql STABLE;
 
