@@ -109,7 +109,7 @@ export default function MyPage() {
                   {history.map(tx => (
                     <tr key={tx.id} className="hover:bg-slate-50">
                       <td className="border px-3 py-2">{new Date(tx.created_at).toLocaleString('ja-JP')}</td>
-                      <td className={`border px-3 py-2 font-semibold ${tx.is_sent ? 'text-slate-700' : 'text-teal-600'}`}>{tx.is_sent ? '贈呈' : '受取'}</td>
+                      <td className="border px-3 py-2 font-semibold text-teal-600">{tx.is_sent ? '贈呈' : '受取'}</td>
                       <td className="border px-3 py-2">{tx.is_sent ? tx.receiver_name : tx.sender_name}</td>
                       <td className="border px-3 py-2 text-center font-bold">{tx.coins}</td>
                       <td className="border px-3 py-2 truncate">{tx.message}</td>
