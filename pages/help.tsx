@@ -216,9 +216,7 @@ export default function HelpPage() {
                     </ul>
                     <h3 className="text-xl font-bold text-gray-800 mt-6 mb-3">CSV一括登録のフォーマット</h3>
                     <div className="bg-slate-100 p-4 rounded my-4">
-                      <pre className="text-sm overflow-x-auto text-gray-800 font-mono">name,email,department,password,slack_id
-山田太郎,yamada@example.com,営業,password123,U01234ABCDE
-田中花子,tanaka@example.com,総務,password456,</pre>
+                      <code className="text-sm text-gray-800 font-mono block whitespace-pre">name,email,department,password,slack_id{'\n'}山田太郎,yamada@example.com,営業,password123,U01234ABCDE{'\n'}田中花子,tanaka@example.com,総務,password456,</code>
                     </div>
                     <p className="text-gray-600 text-sm mt-2">※slack_idは任意項目です</p>
                   </div>
