@@ -52,7 +52,7 @@ export default function HelpPage() {
               {/* Content Area */}
               <div className="flex-1 p-8">
                 {activeSection === 'getting-started' && (
-                  <div className="prose max-w-none">
+                  <div>
                     <h2 className="text-3xl font-bold text-gray-900 mb-4">🚀 はじめに</h2>
                     <p className="text-gray-700 mb-4">
                       コインシステムへようこそ!このシステムは、社内で感謝やねぎらいの気持ちを形にし、
@@ -72,7 +72,7 @@ export default function HelpPage() {
                 )}
 
                 {activeSection === 'login' && (
-                  <div className="prose max-w-none">
+                  <div>
                     <h2 className="text-3xl font-bold text-gray-900 mb-4">🔐 ログイン方法</h2>
                     <h3 className="text-xl font-bold text-gray-800 mt-6 mb-3">パスワードログイン</h3>
                     <ol className="list-decimal pl-6 space-y-2 text-gray-700">
@@ -95,7 +95,7 @@ export default function HelpPage() {
                 )}
 
                 {activeSection === 'send-coins' && (
-                  <div className="prose max-w-none">
+                  <div>
                     <h2 className="text-3xl font-bold text-gray-900 mb-4">💰 コイン送信</h2>
                     <h3 className="text-xl font-bold text-gray-800 mt-6 mb-3">送信手順</h3>
                     <ol className="list-decimal pl-6 space-y-2 text-gray-700">
@@ -123,7 +123,7 @@ export default function HelpPage() {
                 )}
 
                 {activeSection === 'history' && (
-                  <div className="prose max-w-none">
+                  <div>
                     <h2 className="text-3xl font-bold text-gray-900 mb-4">📊 履歴・トレンド</h2>
                     <h3 className="text-xl font-bold text-gray-800 mt-6 mb-3">マイページ</h3>
                     <p className="text-gray-700 mb-4">
@@ -144,7 +144,7 @@ export default function HelpPage() {
                 )}
 
                 {activeSection === 'notifications' && (
-                  <div className="prose max-w-none">
+                  <div>
                     <h2 className="text-3xl font-bold text-gray-900 mb-4">🔔 通知設定</h2>
                     <h3 className="text-xl font-bold text-gray-800 mt-6 mb-3">プッシュ通知の有効化</h3>
                     <ol className="list-decimal pl-6 space-y-2 text-gray-700">
@@ -169,7 +169,7 @@ export default function HelpPage() {
                 )}
 
                 {activeSection === 'ranking' && (
-                  <div className="prose max-w-none">
+                  <div>
                     <h2 className="text-3xl font-bold text-gray-900 mb-4">🏆 ランキング</h2>
                     <p className="text-gray-700 mb-4">
                       ランキングページでは、コイン受取数に基づいた月間・年間ランキングを確認できます。
@@ -194,7 +194,7 @@ export default function HelpPage() {
                 )}
 
                 {activeSection === 'admin' && (
-                  <div className="prose max-w-none">
+                  <div>
                     <h2 className="text-3xl font-bold text-gray-900 mb-4">⚙️ 管理者機能</h2>
                     <p className="text-gray-700 mb-4">
                       管理者アカウントでログインすると、システム全体の管理機能にアクセスできます。
@@ -215,17 +215,17 @@ export default function HelpPage() {
                       <li><strong>ページネーション:</strong> 50件ずつ表示(前へ/次へボタン)</li>
                     </ul>
                     <h3 className="text-xl font-bold text-gray-800 mt-6 mb-3">CSV一括登録のフォーマット</h3>
-                    <pre className="bg-slate-100 p-4 rounded text-sm overflow-x-auto">
-name,email,department,password,slack_id
+                    <div className="bg-slate-100 p-4 rounded my-4">
+                      <pre className="text-sm overflow-x-auto text-gray-800 font-mono">name,email,department,password,slack_id
 山田太郎,yamada@example.com,営業,password123,U01234ABCDE
-田中花子,tanaka@example.com,総務,password456,
-                    </pre>
+田中花子,tanaka@example.com,総務,password456,</pre>
+                    </div>
                     <p className="text-gray-600 text-sm mt-2">※slack_idは任意項目です</p>
                   </div>
                 )}
 
                 {activeSection === 'slack' && (
-                  <div className="prose max-w-none">
+                  <div>
                     <h2 className="text-3xl font-bold text-gray-900 mb-4">💬 Slack連携</h2>
                     <p className="text-gray-700 mb-4">
                       SlackアプリをインストールすることでSlackからコインシステムを利用できます。
@@ -258,7 +258,7 @@ name,email,department,password,slack_id
                 )}
 
                 {activeSection === 'faq' && (
-                  <div className="prose max-w-none">
+                  <div>
                     <h2 className="text-3xl font-bold text-gray-900 mb-4">❓ よくある質問</h2>
                     <div className="space-y-6">
                       <div className="border-b border-slate-200 pb-4">
