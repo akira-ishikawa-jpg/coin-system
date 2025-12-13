@@ -894,9 +894,9 @@ export default function AdminPage() {
                               <button
                                 onClick={() => startBonusGrant(r.employee_id)}
                                 className={`px-3 py-1 rounded text-sm font-bold transition ${
-                                  openBonusRowId === r.employee_id 
-                                    ? 'bg-amber-600 text-white' 
-                                    : 'bg-amber-500 text-white hover:bg-amber-600'
+                                  openBonusRowId === r.employee_id
+                                    ? 'bg-teal-600 text-white'
+                                    : 'bg-teal-500 text-white hover:bg-teal-600'
                                 }`}
                                 title={`${r.name}にボーナスコインを付与`}
                               >
@@ -915,10 +915,10 @@ export default function AdminPage() {
                         
                         {/* Inline Bonus Grant Form */}
                         {openBonusRowId === r.employee_id && (
-                          <tr className={idx % 2 === 0 ? 'bg-amber-50' : 'bg-amber-100'}>
+                          <tr className={idx % 2 === 0 ? 'bg-teal-50' : 'bg-teal-100'}>
                             <td colSpan={8} className="p-4">
-                              <div className="bg-white border border-amber-200 rounded-lg p-4 shadow-sm">
-                                <h4 className="text-lg font-bold text-amber-900 mb-3 flex items-center">
+                              <div className="bg-white border border-teal-200 rounded-lg p-4 shadow-sm">
+                                <h4 className="text-lg font-bold text-teal-900 mb-3 flex items-center">
                                   🎁 {r.name} さんにボーナスコイン付与
                                 </h4>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
@@ -931,7 +931,7 @@ export default function AdminPage() {
                                       placeholder="例: 50"
                                       value={bonusCoins}
                                       onChange={(e) => setBonusCoins(e.target.value)}
-                                      className="w-full border border-amber-300 p-2 rounded-md focus:outline-none focus:border-amber-500"
+                                      className="w-full border border-teal-300 p-2 rounded-md focus:outline-none focus:border-teal-500"
                                     />
                                   </div>
                                   <div>
@@ -941,20 +941,20 @@ export default function AdminPage() {
                                       placeholder="例: 月間MVP賞"
                                       value={bonusReason}
                                       onChange={(e) => setBonusReason(e.target.value)}
-                                      className="w-full border border-amber-300 p-2 rounded-md focus:outline-none focus:border-amber-500"
+                                      className="w-full border border-teal-300 p-2 rounded-md focus:outline-none focus:border-teal-500"
                                     />
                                   </div>
                                   <div className="flex gap-2">
                                     <button
                                       onClick={() => grantBonus(r.employee_id, r.name)}
                                       disabled={bonusLoading || !bonusCoins || !bonusReason}
-                                      className="bg-amber-600 text-white px-4 py-2 rounded-md font-bold hover:bg-amber-700 transition disabled:opacity-50 flex-1"
+                                      className="bg-teal-600 text-white px-4 py-2 rounded-md font-bold hover:bg-teal-700 transition disabled:opacity-50 flex-1"
                                     >
                                       {bonusLoading ? '付与中...' : '付与'}
                                     </button>
                                     <button
                                       onClick={() => setOpenBonusRowId(null)}
-                                      className="px-4 py-2 border border-amber-300 text-amber-700 rounded-md font-bold hover:bg-amber-100 transition"
+                                      className="px-4 py-2 border border-teal-300 text-teal-700 rounded-md font-bold hover:bg-teal-100 transition"
                                     >
                                       ×
                                     </button>
