@@ -51,15 +51,24 @@ export default function AdminPage() {
   const [auditTotal, setAuditTotal] = useState(0)
   const AUDIT_PAGE_SIZE = 50
 
+  // Bonus grant state
+  const [showBonusGrant, setShowBonusGrant] = useState(false)
+  const [bonusEmployeeId, setBonusEmployeeId] = useState('')
+  const [bonusCoins, setBonusCoins] = useState('')
+  const [bonusReason, setBonusReason] = useState('')
+  const [bonusLoading, setBonusLoading] = useState(false)
+  const [bonusMessage, setBonusMessage] = useState('')
+
   useEffect(() => { load() }, [])
   useEffect(() => { if (activeTab === 'audit') loadAuditLogs() }, [activeTab, auditPage, auditFilterAction, auditFilterUser])
 
   // 排他的にセクションを開くための関数
-  function openExclusiveSection(section: 'addUser' | 'bulkUpload' | 'exportOptions') {
+  function openExclusiveSection(section: 'addUser' | 'bulkUpload' | 'exportOptions' | 'bonusGrant') {
     // 全てを一度閉じる
     setShowAddUser(false)
     setShowBulkUpload(false)
     setShowExportOptions(false)
+    setShowBonusGrant(false)
     
     // 指定されたセクションを開く
     switch(section) {
@@ -72,14 +81,18 @@ export default function AdminPage() {
       case 'exportOptions':
         setShowExportOptions(true)
         break
+      case 'bonusGrant':
+        setShowBonusGrant(true)
+        break
     }
   }
 
-  function toggleSection(section: 'addUser' | 'bulkUpload' | 'exportOptions') {
+  function toggleSection(section: 'addUser' | 'bulkUpload' | 'exportOptions' | 'bonusGrant') {
     const isCurrentlyOpen = {
       addUser: showAddUser,
       bulkUpload: showBulkUpload,
-      exportOptions: showExportOptions
+      exportOptions: showExportOptions,
+      bonusGrant: showBonusGrant
     }[section]
     
     if (isCurrentlyOpen) {
@@ -87,6 +100,7 @@ export default function AdminPage() {
       setShowAddUser(false)
       setShowBulkUpload(false)
       setShowExportOptions(false)
+      setShowBonusGrant(false)
     } else {
       // 閉じている場合は排他的に開く
       openExclusiveSection(section)
@@ -165,6 +179,61 @@ export default function AdminPage() {
     
     setDepartmentData(deptData)
     setLoading(false)
+  }
+
+  async function grantBonus() {
+    if (!bonusEmployeeId || !bonusCoins || !bonusReason) {
+      setBonusMessage('全ての項目を入力してください')
+      return
+    }
+
+    const coins = parseInt(bonusCoins)
+    if (isNaN(coins) || coins <= 0) {
+      setBonusMessage('有効なコイン数を入力してください')
+      return
+    }
+
+    setBonusLoading(true)
+    setBonusMessage('')
+
+    try {
+      const sessionRes = await supabase.auth.getSession()
+      const token = (sessionRes as any)?.data?.session?.access_token
+      if (!token) { 
+        setBonusMessage('認証エラー')
+        setBonusLoading(false)
+        return 
+      }
+
+      const res = await fetch('/api/admin/grant-bonus', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          employee_id: bonusEmployeeId,
+          coins: coins,
+          reason: bonusReason
+        })
+      })
+
+      const result = await res.json()
+      
+      if (res.ok) {
+        setBonusMessage(result.message || 'ボーナスコインを付与しました')
+        setBonusEmployeeId('')
+        setBonusCoins('')
+        setBonusReason('')
+        load() // Refresh data
+      } else {
+        setBonusMessage(result.error || 'エラーが発生しました')
+      }
+    } catch (err) {
+      setBonusMessage('ネットワークエラーが発生しました')
+    }
+
+    setBonusLoading(false)
   }
 
   async function exportCsv() {
@@ -489,6 +558,12 @@ export default function AdminPage() {
                 {showBulkUpload ? '閉じる' : 'CSV一括登録'}
               </button>
               <button 
+                onClick={() => toggleSection('bonusGrant')} 
+                className="bg-amber-600 text-white px-6 py-3 rounded-md font-bold hover:bg-amber-700 hover:scale-105 hover:shadow-lg transition-all duration-200"
+              >
+                🎁 {showBonusGrant ? '閉じる' : 'ボーナス付与'}
+              </button>
+              <button 
                 onClick={() => toggleSection('exportOptions')} 
                 className="bg-teal-600 text-white px-6 py-3 rounded-md font-bold hover:bg-teal-700 hover:scale-105 hover:shadow-lg transition-all duration-200"
               >
@@ -625,6 +700,67 @@ export default function AdminPage() {
                         ))}
                       </div>
                     )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Bonus Grant Form */}
+            {showBonusGrant && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-8">
+                <h3 className="text-xl font-bold mb-4 text-amber-900">🎁 ボーナスコイン付与</h3>
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">対象者</label>
+                    <select
+                      value={bonusEmployeeId}
+                      onChange={(e) => setBonusEmployeeId(e.target.value)}
+                      className="w-full border border-amber-300 p-3 rounded-md focus:outline-none focus:border-amber-500"
+                    >
+                      <option value="">選択してください</option>
+                      {rows.map(r => (
+                        <option key={r.employee_id} value={r.employee_id}>
+                          {r.name} ({r.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">付与コイン数</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="1000"
+                      placeholder="例: 50"
+                      value={bonusCoins}
+                      onChange={(e) => setBonusCoins(e.target.value)}
+                      className="w-full border border-amber-300 p-3 rounded-md focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">理由</label>
+                    <textarea
+                      placeholder="例: 月間MVP賞、特別プロジェクト貢献など"
+                      value={bonusReason}
+                      onChange={(e) => setBonusReason(e.target.value)}
+                      className="w-full border border-amber-300 p-3 rounded-md focus:outline-none focus:border-amber-500 h-20"
+                    />
+                  </div>
+                  <button
+                    onClick={grantBonus}
+                    disabled={bonusLoading || !bonusEmployeeId || !bonusCoins || !bonusReason}
+                    className="w-full bg-amber-600 text-white px-4 py-3 rounded-md font-bold hover:bg-amber-700 transition disabled:opacity-50"
+                  >
+                    {bonusLoading ? '付与中...' : '🎁 ボーナスコインを付与'}
+                  </button>
+                </div>
+                {bonusMessage && (
+                  <div className={`mt-4 p-4 rounded-md ${
+                    bonusMessage.includes('付与しました') 
+                      ? 'bg-green-50 text-green-700 border border-green-200' 
+                      : 'bg-red-50 text-red-700 border border-red-200'
+                  }`}>
+                    {bonusMessage}
                   </div>
                 )}
               </div>
