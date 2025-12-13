@@ -371,8 +371,6 @@ export default function AdminPage() {
 
             {activeTab === 'stats' && (
               <>
-                <p className="text-center text-gray-600 mb-8">今月のコイン受取サマリー</p>
-
                 <div className="flex gap-4 flex-col md:flex-row justify-center mb-8">
               <button 
                 onClick={() => setShowAddUser(!showAddUser)} 
