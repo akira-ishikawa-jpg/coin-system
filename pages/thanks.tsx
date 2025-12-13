@@ -123,22 +123,52 @@ export default function ThanksPage() {
     const tx = transactions.find(t => t.id === transactionId)
     if (!tx) return
 
-    if (tx.user_has_liked) {
-      // Unlike
-      await supabase
-        .from('transaction_likes')
-        .delete()
-        .eq('transaction_id', transactionId)
-        .eq('employee_id', currentUserId)
-    } else {
-      // Like
-      await supabase
-        .from('transaction_likes')
-        .insert({ transaction_id: transactionId, employee_id: currentUserId })
-    }
+    // 楽観的UI更新：即座にローカル状態を更新
+    const updatedAllTransactions = allTransactions.map(t => {
+      if (t.id === transactionId) {
+        return {
+          ...t,
+          user_has_liked: !t.user_has_liked,
+          likes_count: t.user_has_liked ? t.likes_count - 1 : t.likes_count + 1
+        }
+      }
+      return t
+    })
+    setAllTransactions(updatedAllTransactions)
 
-    // Reload
-    load()
+    // フィルターされた表示も更新
+    const updatedTransactions = transactions.map(t => {
+      if (t.id === transactionId) {
+        return {
+          ...t,
+          user_has_liked: !t.user_has_liked,
+          likes_count: t.user_has_liked ? t.likes_count - 1 : t.likes_count + 1
+        }
+      }
+      return t
+    })
+    setTransactions(updatedTransactions)
+
+    // バックグラウンドでサーバー更新
+    try {
+      if (tx.user_has_liked) {
+        // Unlike
+        await supabase
+          .from('transaction_likes')
+          .delete()
+          .eq('transaction_id', transactionId)
+          .eq('employee_id', currentUserId)
+      } else {
+        // Like
+        await supabase
+          .from('transaction_likes')
+          .insert({ transaction_id: transactionId, employee_id: currentUserId })
+      }
+    } catch (error) {
+      // エラー時は元の状態に戻す（全体を再読み込み）
+      load()
+      console.error('いいね更新エラー:', error)
+    }
   }
 
   return (
