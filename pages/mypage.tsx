@@ -116,7 +116,8 @@ export default function MyPage() {
 
     const { data: setting } = await supabase.from('settings').select('value').eq('key','default_weekly_coins').limit(1).maybeSingle()
     const defaultWeekly = setting ? parseInt(setting.value,10) : 250
-    setRemaining(defaultWeekly - sentSum)
+    const weeklyRemaining = defaultWeekly - sentSum
+    setRemaining(weeklyRemaining + (emp.bonus_coins || 0)) // ボーナスコインも合算
 
     // month received and sent
     const now = new Date()
@@ -378,10 +379,6 @@ export default function MyPage() {
             <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 transition-all duration-300 hover:shadow-lg hover:scale-105">
               <div className="text-xs text-gray-600 mb-1">今週の残コイン</div>
               <div className="text-xl font-bold text-teal-600">{remaining === null ? '-' : remaining}</div>
-            </div>
-            <div className="bg-white border border-amber-200 rounded-lg shadow-sm p-4 transition-all duration-300 hover:shadow-lg hover:scale-105">
-              <div className="text-xs text-amber-600 mb-1 font-semibold">🎁 ボーナスコイン</div>
-              <div className="text-xl font-bold text-amber-600">{bonusCoins}</div>
             </div>
             <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 transition-all duration-300 hover:shadow-lg hover:scale-105">
               <div className="text-xs text-gray-600 mb-1">今月の受取</div>

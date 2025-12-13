@@ -892,13 +892,13 @@ export default function AdminPage() {
                           <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_sent}</td>
                           <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_likes || 0}</td>
                           <td className="p-3 text-center">
-                            <div className="flex gap-2 justify-center">
+                            <div className="flex gap-1 justify-center items-center flex-nowrap">
                               <button
                                 onClick={() => startBonusGrant(r.employee_id)}
-                                className={`px-3 py-1 rounded text-sm font-bold transition ${
+                                className={`px-2 py-1 rounded text-xs font-bold transition whitespace-nowrap ${
                                   openBonusRowId === r.employee_id
                                     ? 'bg-teal-600 text-white'
-                                    : 'bg-teal-500 text-white hover:bg-teal-600'
+                                    : 'bg-teal-600 text-white hover:bg-teal-700'
                                 }`}
                                 title={`${r.name}にボーナスコインを付与`}
                               >
@@ -907,9 +907,9 @@ export default function AdminPage() {
                               <button
                                 onClick={() => handleDeleteUser(r.employee_id, r.name)}
                                 disabled={deletingId === r.employee_id}
-                                className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition disabled:opacity-50"
+                                className="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold hover:bg-red-600 transition disabled:opacity-50 whitespace-nowrap"
                               >
-                                {deletingId === r.employee_id ? '削除中...' : '削除'}
+                                {deletingId === r.employee_id ? '削除中' : '削除'}
                               </button>
                             </div>
                           </td>
