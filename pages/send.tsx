@@ -89,6 +89,7 @@ export default function SendPage() {
       .select('coins')
       .eq('sender_id', emp.id)
       .gte('created_at', weekStartDate.toISOString())
+      .not('slack_payload', 'cs', '{"bonus":true}')
     const sentSum = (sent || []).reduce((s:any, r:any) => s + (r.coins||0), 0)
 
     const { data: setting } = await supabase.from('settings').select('value').eq('key','default_weekly_coins').limit(1).maybeSingle()

@@ -105,7 +105,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Check weekly remaining coins
   const weekStart = getWeekStart()
-  const { data: sentTx } = await supabase.from('coin_transactions').select('coins').eq('sender_id', senderData.id).eq('week_start', weekStart)
+  const { data: sentTx } = await supabase.from('coin_transactions').select('coins').eq('sender_id', senderData.id).eq('week_start', weekStart).not('slack_payload', 'cs', '{"bonus":true}')
   const sentSum = (sentTx || []).reduce((s: number, r: any) => s + (r.coins || 0), 0)
 
   const { data: setting } = await supabase.from('settings').select('value').eq('key', 'default_weekly_coins').limit(1).maybeSingle()
