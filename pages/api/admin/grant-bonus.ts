@@ -1,6 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { createClient } from '@supabase/supabase-js'
-import { verifyAuth } from '../../../lib/AuthMiddleware'
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
@@ -22,8 +21,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return
   }
 
-  const authResult = await verifyAuth(req)
-  if (!authResult.authenticated || authResult.user?.role !== 'admin') {
+  // Bearer token auth and admin check
+  const authHeader = (req.headers.authorization as string) || ''
+  if (!authHeader.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Unauthorized' })
+    return
+  }
+
+  const token = authHeader.split(' ')[1]
+  const { data: authData, error: authErr } = await supabase.auth.getUser(token)
+  if (authErr || !authData?.user) {
+    res.status(401).json({ error: 'Unauthorized' })
+    return
+  }
+
+  const userEmail = authData.user.email
+  const { data: currentUser } = await supabase
+    .from('employees')
+    .select('id,role')
+    .eq('email', userEmail)
+    .single()
+
+  if (!currentUser || currentUser.role !== 'admin') {
     res.status(403).json({ error: 'Admin access required' })
     return
   }
@@ -56,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Insert bonus transaction
     const weekStart = getWeekStart()
     const insertPayload = {
-      sender_id: authResult.user.id, // Admin who gave the bonus
+      sender_id: currentUser.id, // Admin who gave the bonus
       receiver_id: employee_id,
       coins: parseInt(coins),
       message: `[ボーナス] ${reason}`,
@@ -77,7 +96,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Log the action
     await supabase.from('audit_logs').insert({
-      actor_id: authResult.user.id,
+      actor_id: currentUser.id,
       action: 'admin_bonus_granted',
       payload: { 
         employee_id, 
