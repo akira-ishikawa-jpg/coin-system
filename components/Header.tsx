@@ -86,7 +86,7 @@ export default function Header() {
   }
 
   return (
-    <header className="bg-white border-b border-slate-200">
+    <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <Link href="/" className="font-bold text-slate-900 text-lg tracking-tight">
