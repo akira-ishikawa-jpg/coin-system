@@ -1,20 +1,82 @@
 import Link from 'next/link'
+import { useState } from 'react'
 
 export default function Header() {
+  const [isOpen, setIsOpen] = useState(false)
+
   return (
     <header className="bg-white border-b border-slate-200">
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-        <Link href="/" className="font-bold text-slate-900 text-lg tracking-tight">
-          感謝なう
-        </Link>
-        <nav className="flex items-center space-x-6 text-sm text-slate-700">
-          <Link href="/login" className="hover:text-teal-600 transition font-medium">ログイン</Link>
-          <Link href="/send" className="hover:text-teal-600 transition font-medium">コインを贈る</Link>
-          <Link href="/thanks" className="hover:text-teal-600 transition font-medium">みんなの感謝</Link>
-          <Link href="/mypage" className="hover:text-teal-600 transition font-medium">マイページ</Link>
-          <Link href="/ranking" className="hover:text-teal-600 transition font-medium">ランキング</Link>
-          <Link href="/admin" className="hover:text-teal-600 transition font-medium">管理</Link>
-        </nav>
+      <div className="container mx-auto px-4 py-4">
+        <div className="flex items-center justify-between">
+          <Link href="/" className="font-bold text-slate-900 text-lg tracking-tight">
+            感謝なう
+          </Link>
+          
+          {/* ハンバーガーメニューボタン（モバイル） */}
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="md:hidden text-slate-700 hover:text-teal-600 focus:outline-none"
+            aria-label="メニュー"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {isOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+
+          {/* デスクトップメニュー */}
+          <nav className="hidden md:flex items-center space-x-6 text-sm text-slate-700">
+            <Link href="/send" className="hover:text-teal-600 transition font-medium">コインを贈る</Link>
+            <Link href="/thanks" className="hover:text-teal-600 transition font-medium">みんなの感謝</Link>
+            <Link href="/mypage" className="hover:text-teal-600 transition font-medium">マイページ</Link>
+            <Link href="/ranking" className="hover:text-teal-600 transition font-medium">ランキング</Link>
+            <Link href="/admin" className="hover:text-teal-600 transition font-medium">管理</Link>
+          </nav>
+        </div>
+
+        {/* モバイルメニュー */}
+        {isOpen && (
+          <nav className="md:hidden mt-4 pb-4 border-t border-slate-200 pt-4 flex flex-col space-y-3">
+            <Link 
+              href="/send" 
+              className="text-slate-700 hover:text-teal-600 transition font-medium py-2"
+              onClick={() => setIsOpen(false)}
+            >
+              コインを贈る
+            </Link>
+            <Link 
+              href="/thanks" 
+              className="text-slate-700 hover:text-teal-600 transition font-medium py-2"
+              onClick={() => setIsOpen(false)}
+            >
+              みんなの感謝
+            </Link>
+            <Link 
+              href="/mypage" 
+              className="text-slate-700 hover:text-teal-600 transition font-medium py-2"
+              onClick={() => setIsOpen(false)}
+            >
+              マイページ
+            </Link>
+            <Link 
+              href="/ranking" 
+              className="text-slate-700 hover:text-teal-600 transition font-medium py-2"
+              onClick={() => setIsOpen(false)}
+            >
+              ランキング
+            </Link>
+            <Link 
+              href="/admin" 
+              className="text-slate-700 hover:text-teal-600 transition font-medium py-2"
+              onClick={() => setIsOpen(false)}
+            >
+              管理
+            </Link>
+          </nav>
+        )}
       </div>
     </header>
   )
