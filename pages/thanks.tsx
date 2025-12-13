@@ -156,22 +156,35 @@ export default function ThanksPage() {
 
             {/* Department Filter */}
             {!loading && departments.length > 0 && (
-              <div className="flex justify-center mb-8">
-                <div className="flex items-center gap-3">
-                  <label className="text-sm font-semibold text-gray-700">部署で絞り込み:</label>
-                  <select
-                    value={selectedDepartment}
-                    onChange={(e) => filterByDepartment(e.target.value)}
-                    className="border border-slate-300 rounded-md px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
+              <div className="mb-8">
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <span className="text-sm font-semibold text-gray-700">部署で絞り込み:</span>
+                  <span className="text-sm text-gray-500">({transactions.length}件)</span>
+                </div>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <button
+                    onClick={() => filterByDepartment('all')}
+                    className={`px-4 py-2 rounded-md font-semibold text-sm transition ${
+                      selectedDepartment === 'all'
+                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                    }`}
                   >
-                    <option value="all">すべて</option>
-                    {departments.map(dept => (
-                      <option key={dept} value={dept}>{dept}</option>
-                    ))}
-                  </select>
-                  <span className="text-sm text-gray-500">
-                    ({transactions.length}件)
-                  </span>
+                    すべて
+                  </button>
+                  {departments.map(dept => (
+                    <button
+                      key={dept}
+                      onClick={() => filterByDepartment(dept)}
+                      className={`px-4 py-2 rounded-md font-semibold text-sm transition ${
+                        selectedDepartment === dept
+                          ? 'bg-green-600 text-white hover:bg-green-700'
+                          : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                      }`}
+                    >
+                      {dept}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
