@@ -166,7 +166,7 @@ export default function ThanksPage() {
                     onClick={() => filterByDepartment('all')}
                     className={`px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 hover:scale-110 active:scale-95 ${
                       selectedDepartment === 'all'
-                        ? 'bg-green-600 text-white hover:bg-green-700 shadow-md'
+                        ? 'bg-teal-600 text-white hover:bg-teal-700 shadow-md'
                         : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
                     }`}
                   >
@@ -178,7 +178,7 @@ export default function ThanksPage() {
                       onClick={() => filterByDepartment(dept)}
                       className={`px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 hover:scale-110 active:scale-95 ${
                         selectedDepartment === dept
-                          ? 'bg-green-600 text-white hover:bg-green-700 shadow-md'
+                          ? 'bg-teal-600 text-white hover:bg-teal-700 shadow-md'
                           : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
                       }`}
                     >
