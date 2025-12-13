@@ -100,7 +100,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return
   }
 
-  // insert transaction
+  // prepare transaction payload
   const insertPayload = {
     sender_id: senderData.id,
     receiver_id: receiverData.id,
@@ -110,6 +110,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     week_start: weekStart,
     slack_payload: { from_slack_user: user_id, raw_text: text }
   }
+
+  // insert transaction
   const { error: insertError } = await supabase.from('coin_transactions').insert(insertPayload)
   if (insertError) {
     res.setHeader('Content-Type', 'application/json')
@@ -120,6 +122,60 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // 異常検知を実行
   const { detectAnomalies } = await import('../../../lib/anomalyDetection')
   await detectAnomalies(senderData.id, receiverData.id, coins, weekStart)
+
+  // Send message to channel with like button
+  const SLACK_CHANNEL_ID = process.env.SLACK_CHANNEL_ID || ''
+  let messageTs = ''
+  
+  try {
+    if (SLACK_CHANNEL_ID) {
+      const channelResponse = await fetch('https://slack.com/api/chat.postMessage', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          Authorization: `Bearer ${SLACK_BOT_TOKEN}`
+        },
+        body: JSON.stringify({
+          channel: SLACK_CHANNEL_ID,
+          text: `:coin: *${senderData.name}* → *${receiverData.name}* (${coins}コイン)\n> ${message}`,
+          blocks: [
+            {
+              type: 'section',
+              text: {
+                type: 'mrkdwn',
+                text: `:coin: *${senderData.name}* → *${receiverData.name}* (${coins}コイン)\n> ${message}`
+              }
+            },
+            {
+              type: 'actions',
+              elements: [
+                {
+                  type: 'button',
+                  text: {
+                    type: 'plain_text',
+                    text: '👍 いいね'
+                  },
+                  action_id: 'like_transaction',
+                  value: insertPayload.sender_id + '|' + insertPayload.receiver_id
+                }
+              ]
+            }
+          ]
+        })
+      })
+      
+      const channelData = await channelResponse.json()
+      if (channelData.ok) {
+        messageTs = channelData.ts
+      }
+    }
+  } catch (err) {
+    await supabase.from('audit_logs').insert({ 
+      actor_id: senderData.id, 
+      action: 'slack_channel_post_failed', 
+      payload: { error: String(err) } 
+    })
+  }
 
   // send DM to receiver
   try {
