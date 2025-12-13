@@ -53,6 +53,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const user_id = body.user_id as string
   const user_name = body.user_name as string
 
+  // Debug: Log the actual text received
+  await supabase.from('audit_logs').insert({ 
+    actor_id: null, 
+    action: 'slack_debug', 
+    payload: { received_text: text, user_id, user_name } 
+  })
+
   // Try pattern with coins first: @user coins message
   let m = text.match(/<@([A-Z0-9]+)>\s+(\d+)\s*(.*)/s)
   let targetSlackId: string, coins: number, message: string
@@ -67,7 +74,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     m = text.match(/<@([A-Z0-9]+)>\s*(.*)/s)
     if (!m) {
       res.setHeader('Content-Type', 'application/json')
-      res.status(200).json({ response_type: 'ephemeral', text: '使い方: /thanks @相手 [コイン数] メッセージ\n例: /thanks @田中さん ありがとう！\n例: /thanks @田中さん 10 いつもありがとう！' })
+      res.status(200).json({ response_type: 'ephemeral', text: `使い方: /thanks @相手 [コイン数] メッセージ\n例: /thanks @田中さん ありがとう！\n例: /thanks @田中さん 10 いつもありがとう！\n\nデバッグ: "${text}"` })
       return
     }
     targetSlackId = m[1]
