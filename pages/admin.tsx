@@ -20,6 +20,18 @@ export default function AdminPage() {
   const [addLoading, setAddLoading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
+  // CSV bulk upload state
+  const [showBulkUpload, setShowBulkUpload] = useState(false)
+  const [csvFile, setCsvFile] = useState<File | null>(null)
+  const [bulkLoading, setBulkLoading] = useState(false)
+  const [bulkResult, setBulkResult] = useState<any>(null)
+
+  // CSV export filter state
+  const [showExportOptions, setShowExportOptions] = useState(false)
+  const [exportDepartment, setExportDepartment] = useState('')
+  const [exportSortBy, setExportSortBy] = useState('received')
+  const [exportMinCoins, setExportMinCoins] = useState(0)
+
   useEffect(() => { load() }, [])
 
   async function load() {
@@ -70,7 +82,13 @@ export default function AdminPage() {
     const token = (sessionRes as any)?.data?.session?.access_token
     if (!token) { alert('認証エラー'); return }
 
-    const res = await fetch('/api/admin/export', {
+    // Build query string with filters
+    const params = new URLSearchParams()
+    if (exportDepartment) params.append('department', exportDepartment)
+    params.append('sortBy', exportSortBy)
+    if (exportMinCoins > 0) params.append('minCoins', exportMinCoins.toString())
+
+    const res = await fetch(`/api/admin/export?${params.toString()}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     if (!res.ok) { alert('エクスポート失敗'); return }
@@ -80,6 +98,62 @@ export default function AdminPage() {
     a.href = url
     a.download = 'monthly_summary.csv'
     a.click()
+  }
+
+  function downloadSampleCsv() {
+    const sample = 'name,email,department,password,slack_id\n山田太郎,yamada@example.com,営業,password123,U01234ABCDE\n田中花子,tanaka@example.com,総務,password456,'
+    const blob = new Blob([sample], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'sample_users.csv'
+    a.click()
+  }
+
+  async function handleBulkUpload() {
+    if (!csvFile) {
+      alert('CSVファイルを選択してください')
+      return
+    }
+
+    setBulkLoading(true)
+    setBulkResult(null)
+
+    try {
+      const csvText = await csvFile.text()
+      const sessionRes = await supabase.auth.getSession()
+      const token = (sessionRes as any)?.data?.session?.access_token
+
+      if (!token) {
+        alert('認証エラー')
+        setBulkLoading(false)
+        return
+      }
+
+      const res = await fetch('/api/admin/bulk-add-users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ csvText })
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        setBulkResult(data)
+        if (data.success > 0) {
+          await load() // Reload user list
+        }
+      } else {
+        alert('❌ ' + (data.error || 'アップロードに失敗しました'))
+      }
+    } catch (error: any) {
+      alert('❌ エラー: ' + error.message)
+    } finally {
+      setBulkLoading(false)
+    }
   }
 
   async function handleAddUser() {
@@ -200,13 +274,19 @@ export default function AdminPage() {
                 onClick={() => setShowAddUser(!showAddUser)} 
                 className="bg-teal-600 text-white px-6 py-3 rounded-md font-bold hover:bg-teal-700 transition"
               >
-                {showAddUser ? 'ユーザー追加を閉じる' : 'ユーザー追加'}
+                {showAddUser ? '閉じる' : 'ユーザー追加'}
               </button>
               <button 
-                onClick={exportCsv} 
+                onClick={() => setShowBulkUpload(!showBulkUpload)} 
                 className="bg-teal-600 text-white px-6 py-3 rounded-md font-bold hover:bg-teal-700 transition"
               >
-                CSVエクスポート
+                {showBulkUpload ? '閉じる' : 'CSV一括登録'}
+              </button>
+              <button 
+                onClick={() => setShowExportOptions(!showExportOptions)} 
+                className="bg-teal-600 text-white px-6 py-3 rounded-md font-bold hover:bg-teal-700 transition"
+              >
+                {showExportOptions ? '閉じる' : 'CSVエクスポート'}
               </button>
             </div>
 
@@ -282,6 +362,102 @@ export default function AdminPage() {
                     {addMessage}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* CSV Bulk Upload */}
+            {showBulkUpload && (
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 mb-8">
+                <h3 className="text-xl font-bold mb-4 text-slate-900">CSV一括ユーザー登録</h3>
+                <div className="mb-4">
+                  <button
+                    onClick={downloadSampleCsv}
+                    className="text-teal-600 underline hover:text-teal-700 text-sm"
+                  >
+                    📥 サンプルCSVをダウンロード
+                  </button>
+                  <p className="text-sm text-gray-600 mt-2">
+                    フォーマット: name,email,department,password,slack_id（slack_idは任意）
+                  </p>
+                </div>
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                  className="w-full border border-slate-300 p-3 rounded-md mb-4"
+                />
+                <button
+                  onClick={handleBulkUpload}
+                  disabled={bulkLoading || !csvFile}
+                  className="w-full bg-teal-600 text-white px-4 py-3 rounded-md font-bold hover:bg-teal-700 transition disabled:opacity-50"
+                >
+                  {bulkLoading ? 'アップロード中...' : 'CSVをアップロード'}
+                </button>
+                {bulkResult && (
+                  <div className="mt-4 p-4 bg-white border rounded-md">
+                    <p className="font-bold mb-2">
+                      ✅ 成功: {bulkResult.success} / ❌ 失敗: {bulkResult.failed} / 合計: {bulkResult.total}
+                    </p>
+                    {bulkResult.results.filter((r: any) => !r.success).length > 0 && (
+                      <div className="mt-2 max-h-60 overflow-y-auto">
+                        <p className="text-sm font-semibold text-red-600 mb-1">エラー詳細:</p>
+                        {bulkResult.results.filter((r: any) => !r.success).map((r: any, i: number) => (
+                          <p key={i} className="text-xs text-red-600">
+                            行{r.row} ({r.email}): {r.error}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* CSV Export Options */}
+            {showExportOptions && (
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 mb-8">
+                <h3 className="text-xl font-bold mb-4 text-slate-900">CSVエクスポート条件指定</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">部署フィルター</label>
+                    <input
+                      type="text"
+                      value={exportDepartment}
+                      onChange={(e) => setExportDepartment(e.target.value)}
+                      className="w-full border border-slate-300 p-3 rounded-md focus:outline-none focus:border-teal-500"
+                      placeholder="空欄=全部署"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">並び替え</label>
+                    <select
+                      value={exportSortBy}
+                      onChange={(e) => setExportSortBy(e.target.value)}
+                      className="w-full border border-slate-300 p-3 rounded-md focus:outline-none focus:border-teal-500"
+                    >
+                      <option value="received">受取コイン順</option>
+                      <option value="sent">贈呈コイン順</option>
+                      <option value="likes">いいね数順</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">最小受取コイン数</label>
+                    <input
+                      type="number"
+                      value={exportMinCoins}
+                      onChange={(e) => setExportMinCoins(Number(e.target.value))}
+                      className="w-full border border-slate-300 p-3 rounded-md focus:outline-none focus:border-teal-500"
+                      placeholder="0"
+                      min="0"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={exportCsv}
+                  className="w-full bg-teal-600 text-white px-4 py-3 rounded-md font-bold hover:bg-teal-700 transition"
+                >
+                  条件指定してエクスポート
+                </button>
               </div>
             )}
 

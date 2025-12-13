@@ -29,6 +29,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const now = new Date()
   const y = Number(req.query.year) || now.getFullYear()
   const m = Number(req.query.month) || (now.getMonth() + 1)
+  const department = req.query.department as string | undefined
+  const sortBy = (req.query.sortBy as string) || 'received' // received | sent | likes
+  const minCoins = Number(req.query.minCoins) || 0
 
   // Aggregate: employee info + total received + total sent + total likes
   const { data: statsData } = await supabase.rpc('aggregate_monthly_stats', { year_in: y, month_in: m })
@@ -79,6 +82,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     )
     
     rows = stats.filter(s => s.total_received > 0 || s.total_sent > 0)
+  }
+
+  // Apply filters
+  if (department) {
+    rows = rows.filter(r => r.department === department)
+  }
+  if (minCoins > 0) {
+    rows = rows.filter(r => (r.total_received || 0) >= minCoins)
+  }
+
+  // Apply sorting
+  if (sortBy === 'received') {
+    rows.sort((a, b) => (b.total_received || 0) - (a.total_received || 0))
+  } else if (sortBy === 'sent') {
+    rows.sort((a, b) => (b.total_sent || 0) - (a.total_sent || 0))
+  } else if (sortBy === 'likes') {
+    rows.sort((a, b) => (b.total_likes || 0) - (a.total_likes || 0))
   }
 
   // CSV
