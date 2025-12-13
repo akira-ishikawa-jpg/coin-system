@@ -144,11 +144,15 @@ export default function ThanksPage() {
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-white py-16 px-4">
+      <div className="min-h-screen bg-gray-50 py-16 px-4">
         <div className="container mx-auto max-w-5xl">
-          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-8">
-            <h2 className="text-4xl font-bold mb-2 text-center text-slate-900">みんなの感謝</h2>
-            <p className="text-center text-gray-600 mb-6">社内で贈られた感謝のコイン一覧</p>
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-teal-600 text-white p-8 text-center">
+              <h1 className="text-4xl font-bold mb-2">🙏 みんなの感謝</h1>
+              <p className="text-teal-100">社内で贈られた感謝のコイン一覧</p>
+            </div>
+            
+            <div className="p-8">
 
             {/* Department Filter */}
             {!loading && departments.length > 0 && (
@@ -218,6 +222,7 @@ export default function ThanksPage() {
                 ))}
               </div>
             )}
+            </div>
           </div>
         </div>
       </div>

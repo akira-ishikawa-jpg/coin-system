@@ -248,18 +248,25 @@ export default function MyPage() {
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-white py-16 px-4">
+      <div className="min-h-screen bg-gray-50 py-16 px-4">
         <div className="container mx-auto max-w-4xl">
-          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-8">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-4xl font-bold text-slate-900">マイページ</h2>
-              <button
-                onClick={() => setEditMode(!editMode)}
-                className="px-4 py-2 bg-teal-600 text-white rounded-md font-bold hover:bg-teal-700 transition"
-              >
-                {editMode ? 'キャンセル' : 'プロフィール編集'}
-              </button>
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-teal-600 text-white p-8">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h1 className="text-4xl font-bold mb-2">👤 マイページ</h1>
+                  <p className="text-teal-100">あなたのコイン活動と統計</p>
+                </div>
+                <button
+                  onClick={() => setEditMode(!editMode)}
+                  className="px-4 py-2 bg-white text-teal-600 rounded-md font-bold hover:bg-teal-50 transition"
+                >
+                  {editMode ? 'キャンセル' : 'プロフィール編集'}
+                </button>
+              </div>
             </div>
+            
+            <div className="p-8">
 
             {editMode ? (
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 mb-8">
@@ -440,6 +447,7 @@ export default function MyPage() {
                 </table>
               </div>
             )}
+          </div>
           </div>
           </div>
         </div>

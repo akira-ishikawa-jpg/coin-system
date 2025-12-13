@@ -60,11 +60,15 @@ export default function RankingPage() {
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-white py-16 px-4">
+      <div className="min-h-screen bg-gray-50 py-16 px-4">
         <div className="container mx-auto max-w-5xl">
-          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-8">
-            <h2 className="text-4xl font-bold mb-2 text-center text-slate-900">ランキング</h2>
-            <p className="text-center text-gray-600 mb-4">今月のコイン送受信ランキング</p>
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-teal-600 text-white p-8 text-center">
+              <h1 className="text-4xl font-bold mb-2">🏆 ランキング</h1>
+              <p className="text-teal-100">今月のコイン送受信ランキング</p>
+            </div>
+            
+            <div className="p-8">
 
             {/* View Mode Switcher */}
             <div className="flex justify-center gap-4 mb-8">
@@ -148,6 +152,7 @@ export default function RankingPage() {
               </div>
             </div>
           )}
+            </div>
           </div>
         </div>
       </div>

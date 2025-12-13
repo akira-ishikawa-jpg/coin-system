@@ -159,11 +159,15 @@ export default function SendPage() {
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-white py-16 px-4">
+      <div className="min-h-screen bg-gray-50 py-16 px-4">
         <div className="container mx-auto max-w-2xl">
-          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-8">
-            <h2 className="text-3xl font-bold mb-2 text-center text-slate-900">コインを贈る</h2>
-            <p className="text-center text-gray-600 mb-2">感謝のメッセージと一緒にコインを贈呈します</p>
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-teal-600 text-white p-8 text-center">
+              <h1 className="text-4xl font-bold mb-2">💰 コインを贈る</h1>
+              <p className="text-teal-100">感謝のメッセージと一緒にコインを贈呈します</p>
+            </div>
+            
+            <div className="p-8">
             
             {remaining !== null && (
               <div className="text-center mb-6">
@@ -298,8 +302,7 @@ export default function SendPage() {
               }`}>
                 {status}
               </div>
-            )}
-          </div>
+            )}            </div>          </div>
         </div>
       </div>
     </>
