@@ -183,36 +183,6 @@ export default function Header() {
               >
                 みんなの感謝
               </Link>
-              <Link 
-                href="/mypage" 
-                className="text-slate-700 hover:text-teal-600 transition font-medium py-2"
-                onClick={() => setIsOpen(false)}
-              >
-                マイページ
-              </Link>
-              <Link 
-                href="/ranking" 
-                className="text-slate-700 hover:text-teal-600 transition font-medium py-2"
-                onClick={() => setIsOpen(false)}
-              >
-                ランキング
-              </Link>
-              {userRole === 'admin' && (
-                <Link 
-                  href="/admin" 
-                  className="text-slate-700 hover:text-teal-600 transition font-medium py-2"
-                  onClick={() => setIsOpen(false)}
-                >
-                  管理
-                </Link>
-              )}
-              <Link 
-                href="/help" 
-                className="text-slate-700 hover:text-teal-600 transition font-medium py-2"
-                onClick={() => setIsOpen(false)}
-              >
-                ヘルプ
-              </Link>
             </nav>
           </div>
         )}
