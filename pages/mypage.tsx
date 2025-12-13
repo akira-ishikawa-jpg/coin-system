@@ -277,7 +277,10 @@ export default function MyPage() {
                           <td className={`p-3 text-right font-bold ${isSent ? 'text-slate-700' : 'text-teal-600'}`}>
                             {isSent ? '-' : '+'}{tx.coins}
                           </td>
-                          <td className="p-3 text-gray-600 text-xs">{tx.message || '-'}</td>
+                          <td className="p-3 text-gray-600 text-xs">
+                            {tx.emoji && <span className="mr-2">{tx.emoji}</span>}
+                            {tx.message || '-'}
+                          </td>
                         </tr>
                       )
                     })}

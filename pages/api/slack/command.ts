@@ -55,10 +55,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const [, receiverSlackId, receiverName, coinsStr, message] = match
     const coins = parseInt(coinsStr, 10)
 
-    if (coins < 1 || coins > 300) {
+    if (!message || !message.trim()) {
       return res.status(200).json({
         response_type: 'ephemeral',
-        text: '❌ コイン数は1〜300の範囲で指定してください'
+        text: '❌ メッセージは必須です'
+      })
+    }
+
+    if (coins < 1 || coins > 100) {
+      return res.status(200).json({
+        response_type: 'ephemeral',
+        text: '❌ コイン数は1〜100の範囲で指定してください（1回の送付上限）'
       })
     }
 

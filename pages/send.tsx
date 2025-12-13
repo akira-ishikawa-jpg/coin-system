@@ -9,8 +9,11 @@ export default function SendPage() {
   const [receiverId, setReceiverId] = useState('')
   const [coins, setCoins] = useState<number>(10)
   const [message, setMessage] = useState('')
+  const [selectedStamps, setSelectedStamps] = useState<string[]>([])
   const [status, setStatus] = useState('')
   const [remaining, setRemaining] = useState<number | null>(null)
+
+  const availableStamps = ['👍', '🎉', '💪', '✨', '🙏', '❤️', '🔥', '⭐', '👏', '🌟']
 
   useEffect(() => {
     fetchEmployees()
@@ -54,6 +57,17 @@ export default function SendPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    
+    // バリデーション
+    if (!message.trim()) {
+      setStatus('失敗: メッセージは必須です')
+      return
+    }
+    if (coins > 100) {
+      setStatus('失敗: 1回の送付上限は100枚です')
+      return
+    }
+    
     setStatus('贈呈中...')
     const sessionRes = await supabase.auth.getSession()
     const token = (sessionRes as any)?.data?.session?.access_token
@@ -62,7 +76,12 @@ export default function SendPage() {
       return
     }
 
-    const payload = { receiver_id: receiverId, coins, message }
+    const payload = { 
+      receiver_id: receiverId, 
+      coins, 
+      message,
+      emoji: selectedStamps.join('') 
+    }
 
     const res = await fetch('/api/coins/send', {
       method: 'POST',
@@ -75,6 +94,7 @@ export default function SendPage() {
       setReceiverId('')
       setCoins(10)
       setMessage('')
+      setSelectedStamps([])
       await fetchRemaining()
     } else {
       setStatus('失敗: ' + (j.error || j.message || ''))
@@ -118,41 +138,79 @@ export default function SendPage() {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  コイン数（1～{remaining !== null ? Math.min(remaining, 300) : 300}）
+                  コイン数（1～100枚、今週の残: {remaining || 0}枚）
                 </label>
                 <div className="flex items-center gap-4">
                   <input 
                     type="range" 
                     min={1} 
-                    max={remaining !== null ? Math.min(remaining, 300) : 300} 
-                    value={Math.min(coins, remaining !== null ? remaining : 300)} 
+                    max={remaining !== null ? Math.min(remaining, 100) : 100} 
+                    value={Math.min(coins, remaining !== null ? Math.min(remaining, 100) : 100)} 
                     onChange={(e) => setCoins(Number(e.target.value))} 
                     className="flex-1 accent-teal-600"
                   />
                   <span className={`text-2xl font-bold min-w-20 text-right ${
-                    remaining !== null && coins > remaining ? 'text-red-600' : 'text-teal-600'
+                    remaining !== null && coins > remaining ? 'text-red-600' : coins > 100 ? 'text-red-600' : 'text-teal-600'
                   }`}>{coins}</span>
                 </div>
+                {coins > 100 && (
+                  <p className="text-sm text-red-600 mt-2">1回の送付上限は100枚です</p>
+                )}
                 {remaining !== null && coins > remaining && (
                   <p className="text-sm text-red-600 mt-2">残コインを超えています</p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">メッセージ（最大100字）</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  メッセージ（必須、最大100字）
+                </label>
                 <textarea 
                   maxLength={100} 
                   value={message} 
                   onChange={(e) => setMessage(e.target.value)} 
                   className="w-full border border-slate-300 p-3 rounded-md focus:outline-none focus:border-blue-500 transition h-24"
                   placeholder="感謝のメッセージを入力..."
+                  required
                 />
                 <p className="text-xs text-gray-500 mt-1">{message.length}/100</p>
               </div>
 
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">スタンプ（任意、複数選択可）</label>
+                <div className="grid grid-cols-5 md:grid-cols-10 gap-2">
+                  {availableStamps.map((stamp) => (
+                    <button
+                      key={stamp}
+                      type="button"
+                      onClick={() => {
+                        if (selectedStamps.includes(stamp)) {
+                          setSelectedStamps(selectedStamps.filter(s => s !== stamp))
+                        } else {
+                          setSelectedStamps([...selectedStamps, stamp])
+                        }
+                      }}
+                      className={`p-3 text-2xl rounded-md border-2 transition hover:scale-110 ${
+                        selectedStamps.includes(stamp)
+                          ? 'border-teal-500 bg-teal-50 scale-110'
+                          : 'border-slate-200 bg-white hover:border-teal-300'
+                      }`}
+                    >
+                      {stamp}
+                    </button>
+                  ))}
+                </div>
+                {selectedStamps.length > 0 && (
+                  <div className="mt-3 p-3 bg-slate-50 rounded-md">
+                    <span className="text-sm text-gray-600">選択中: </span>
+                    <span className="text-xl">{selectedStamps.join(' ')}</span>
+                  </div>
+                )}
+              </div>
+
               <button 
                 type="submit"
-                disabled={remaining !== null && coins > remaining}
+                disabled={(remaining !== null && coins > remaining) || coins > 100 || !message.trim()}
                 className="w-full bg-teal-600 text-white px-4 py-3 rounded-md font-bold hover:bg-teal-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 贈呈する

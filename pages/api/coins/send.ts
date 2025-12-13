@@ -26,8 +26,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { data: authData, error: authErr } = await supabase.auth.getUser(token)
   if (authErr || !authData?.user) return res.status(401).json({ error: 'Unauthorized' })
 
-  const { receiver_id, coins, message } = req.body
+  const { receiver_id, coins, message, emoji } = req.body
   if (!receiver_id || !coins) return res.status(400).json({ error: 'missing params' })
+  
+  // バリデーション
+  if (!message || !message.trim()) {
+    return res.status(400).json({ error: 'メッセージは必須です' })
+  }
+  if (coins > 100) {
+    return res.status(400).json({ error: '1回の送付上限は100枚です' })
+  }
 
   const senderEmail = authData.user.email
   const { data: sender } = await supabase.from('employees').select('id,name,slack_id').eq('email', senderEmail).limit(1).maybeSingle()
@@ -54,7 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     receiver_id: receiver.id,
     coins,
     message,
-    emoji: '',
+    emoji: emoji || '',
     week_start: weekStart,
     slack_payload: { from_web: true }
   }

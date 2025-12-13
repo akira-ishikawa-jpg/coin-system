@@ -8,6 +8,7 @@ type Transaction = {
   receiver_name: string
   coins: number
   message: string
+  emoji?: string
   created_at: string
   likes_count: number
   user_has_liked: boolean
@@ -77,6 +78,7 @@ export default function ThanksPage() {
       receiver_name: t.receiver?.name || '-',
       coins: t.coins,
       message: t.message || '',
+      emoji: t.emoji || '',
       created_at: t.created_at,
       likes_count: likesMap[t.id]?.count || 0,
       user_has_liked: likesMap[t.id]?.userLiked || false
@@ -137,7 +139,10 @@ export default function ThanksPage() {
                             {tx.coins} コイン
                           </span>
                         </div>
-                        <p className="text-gray-700 mb-2">{tx.message}</p>
+                        <p className="text-gray-700 mb-2">
+                          {tx.emoji && <span className="text-2xl mr-2">{tx.emoji}</span>}
+                          {tx.message}
+                        </p>
                         <p className="text-xs text-gray-500">
                           {new Date(tx.created_at).toLocaleString('ja-JP')}
                         </p>
