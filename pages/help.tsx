@@ -60,7 +60,7 @@ export default function HelpPage() {
                     </p>
                     <h3 className="text-xl font-bold text-gray-800 mt-6 mb-3">主な機能</h3>
                     <ul className="list-disc pl-6 space-y-2 text-gray-700">
-                      <li><strong>コイン送信:</strong> 仲間に感謝の気持ちを込めてコインを贈れます(毎月100枚まで)</li>
+                      <li><strong>コイン送信:</strong> 仲間に感謝の気持ちを込めてコインを贈れます(週に250枚まで)</li>
                       <li><strong>スタンプ機能:</strong> メッセージと一緒にかわいいスタンプを選択可能</li>
                       <li><strong>ランキング:</strong> 月間・年間のコイン受取ランキングを閲覧</li>
                       <li><strong>いいね機能:</strong> 他の人の感謝メッセージにいいねできます</li>
@@ -101,18 +101,18 @@ export default function HelpPage() {
                     <ol className="list-decimal pl-6 space-y-2 text-gray-700">
                       <li>ヘッダーメニューから「コイン送信」をクリック</li>
                       <li>送信先の従業員を検索ボックスから選択</li>
-                      <li>送信枚数を入力(1-100枚、毎月100枚まで送信可能)</li>
+                      <li>送信枚数を入力(1-100枚、週に250枚まで送信可能)</li>
                       <li>感謝メッセージを入力(必須)</li>
                       <li>お好みのスタンプを選択(任意)</li>
                       <li>「送信」ボタンをクリック</li>
                     </ol>
                     <h3 className="text-xl font-bold text-gray-800 mt-6 mb-3">制約事項</h3>
                     <ul className="list-disc pl-6 space-y-2 text-gray-700">
-                      <li>毎月の送信上限: 100枚</li>
+                      <li>週の送信上限: 250枚</li>
                       <li>1回の送信上限: 100枚</li>
                       <li>メッセージは必須入力項目です</li>
                       <li>自分自身には送信できません</li>
-                      <li>月初に自動的に残高がリセットされます</li>
+                      <li>週初に自動的に残高がリセットされます</li>
                     </ul>
                     <div className="bg-teal-50 border-l-4 border-teal-400 p-4 mt-6">
                       <p className="text-teal-700">
@@ -260,9 +260,9 @@ export default function HelpPage() {
                     <h2 className="text-3xl font-bold text-gray-900 mb-4">❓ よくある質問</h2>
                     <div className="space-y-6">
                       <div className="border-b border-slate-200 pb-4">
-                        <h3 className="text-lg font-bold text-gray-800 mb-2">Q. 毎月のコイン上限はいつリセットされますか?</h3>
+                        <h3 className="text-lg font-bold text-gray-800 mb-2">Q. 週のコイン上限はいつリセットされますか?</h3>
                         <p className="text-gray-700">
-                          A. 毎月1日の0時(日本時間)に自動的にリセットされ、新たに100枚が配布されます。
+                          A. 毎週月曜日の0時(日本時間)に自動的にリセットされ、新たに250枚が配布されます。
                         </p>
                       </div>
                       <div className="border-b border-slate-200 pb-4">
@@ -275,7 +275,7 @@ export default function HelpPage() {
                         <h3 className="text-lg font-bold text-gray-800 mb-2">Q. コイン送信時にエラーが出ます</h3>
                         <p className="text-gray-700">
                           A. 以下をご確認ください:<br/>
-                          ・残高は十分にありますか?(毎月100枚まで)<br/>
+                          ・残高は十分にありますか?(週に250枚まで)<br/>
                           ・メッセージを入力していますか?(必須項目です)<br/>
                           ・ネットワーク接続は正常ですか?<br/>
                           問題が解決しない場合は、システム管理者にお問い合わせください。
