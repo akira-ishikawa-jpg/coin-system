@@ -12,6 +12,7 @@ export default function MyPage() {
   const [department, setDepartment] = useState<string>('')
   const [empId, setEmpId] = useState<string | null>(null)
   const [remaining, setRemaining] = useState<number | null>(null)
+  const [bonusCoins, setBonusCoins] = useState<number>(0)
   const [receivedThisMonth, setReceivedThisMonth] = useState<number>(0)
   const [sentThisMonth, setSentThisMonth] = useState<number>(0)
   const [transactions, setTransactions] = useState<any[]>([])
@@ -83,11 +84,12 @@ export default function MyPage() {
     setUserEmail(user.email || null)
 
     // get employee record
-    const { data: emp } = await supabase.from('employees').select('id, name, department').eq('email', user.email).limit(1).maybeSingle()
+    const { data: emp } = await supabase.from('employees').select('id, name, department, bonus_coins').eq('email', user.email).limit(1).maybeSingle()
     if (!emp) return
     setEmpId(emp.id)
     setUserName(emp.name || '')
     setDepartment(emp.department || '')
+    setBonusCoins(emp.bonus_coins || 0)
     setEditName(emp.name || '')
     setEditEmail(user.email || '')
     setEditDepartment(emp.department || '')
@@ -376,6 +378,10 @@ export default function MyPage() {
             <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 transition-all duration-300 hover:shadow-lg hover:scale-105">
               <div className="text-xs text-gray-600 mb-1">今週の残コイン</div>
               <div className="text-xl font-bold text-teal-600">{remaining === null ? '-' : remaining}</div>
+            </div>
+            <div className="bg-white border border-amber-200 rounded-lg shadow-sm p-4 transition-all duration-300 hover:shadow-lg hover:scale-105">
+              <div className="text-xs text-amber-600 mb-1 font-semibold">🎁 ボーナスコイン</div>
+              <div className="text-xl font-bold text-amber-600">{bonusCoins}</div>
             </div>
             <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 transition-all duration-300 hover:shadow-lg hover:scale-105">
               <div className="text-xs text-gray-600 mb-1">今月の受取</div>

@@ -847,6 +847,7 @@ export default function AdminPage() {
                       <th className="p-3 text-left font-bold text-gray-700">メール</th>
                       <th className="p-3 text-left font-bold text-gray-700">部署</th>
                       <th className="p-3 text-left font-bold text-gray-700">権限</th>
+                      <th className="p-3 text-right font-bold text-gray-700">ボーナスコイン</th>
                       <th className="p-3 text-right font-bold text-gray-700">月次受取合計</th>
                       <th className="p-3 text-right font-bold text-gray-700">月次贈呈合計</th>
                       <th className="p-3 text-right font-bold text-gray-700">月次いいね合計</th>
@@ -886,6 +887,7 @@ export default function AdminPage() {
                               )}
                             </div>
                           </td>
+                          <td className="p-3 text-right font-bold text-amber-600 text-lg">{(r as any).bonus_coins || 0}</td>
                           <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_received}</td>
                           <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_sent}</td>
                           <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_likes || 0}</td>
@@ -916,7 +918,7 @@ export default function AdminPage() {
                         {/* Inline Bonus Grant Form */}
                         {openBonusRowId === r.employee_id && (
                           <tr className={idx % 2 === 0 ? 'bg-teal-50' : 'bg-teal-100'}>
-                            <td colSpan={8} className="p-4">
+                            <td colSpan={9} className="p-4">
                               <div className="bg-white border border-teal-200 rounded-lg p-4 shadow-sm">
                                 <h4 className="text-lg font-bold text-teal-900 mb-3 flex items-center">
                                   🎁 {r.name} さんにボーナスコイン付与

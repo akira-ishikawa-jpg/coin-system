@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS employees (
   department text,
   slack_id text UNIQUE,
   role text DEFAULT 'user',
+  bonus_coins int DEFAULT 0,
   created_at timestamptz DEFAULT now()
 );
 

@@ -63,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Get employee info
     const { data: employee, error: empError } = await supabase
       .from('employees')
-      .select('id, name, email')
+      .select('id, name, email, bonus_coins')
       .eq('id', employee_id)
       .single()
 
@@ -72,24 +72,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return
     }
 
-    // Insert bonus transaction
-    const weekStart = getWeekStart()
-    const insertPayload = {
-      sender_id: currentUser.id, // Admin who gave the bonus
-      receiver_id: employee_id,
-      coins: parseInt(coins),
-      message: `[ボーナス] ${reason}`,
-      emoji: '🎁',
-      week_start: weekStart,
-      slack_payload: { bonus: true, admin_granted: true }
-    }
+    // Update employee's bonus_coins directly
+    const newBonusTotal = (employee.bonus_coins || 0) + parseInt(coins)
+    const { error: updateError } = await supabase
+      .from('employees')
+      .update({ bonus_coins: newBonusTotal })
+      .eq('id', employee_id)
 
-    const { error: insertError } = await supabase
-      .from('coin_transactions')
-      .insert(insertPayload)
-
-    if (insertError) {
-      console.error('Insert error:', insertError)
+    if (updateError) {
+      console.error('Update error:', updateError)
       res.status(500).json({ error: 'Failed to grant bonus coins' })
       return
     }
@@ -101,14 +92,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       payload: { 
         employee_id, 
         employee_name: employee.name, 
-        coins, 
-        reason 
+        coins: parseInt(coins), 
+        reason,
+        previous_bonus: employee.bonus_coins || 0,
+        new_bonus_total: newBonusTotal
       }
     })
 
     res.status(200).json({ 
       success: true, 
-      message: `${employee.name} に ${coins} ボーナスコインを付与しました` 
+      message: `${employee.name} に ${coins} ボーナスコインを付与しました（合計: ${newBonusTotal}コイン）` 
     })
 
   } catch (error) {
