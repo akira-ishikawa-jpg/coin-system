@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Header from '../components/Header'
 import { supabase } from '../lib/supabaseClient'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 type Row = { employee_id: string; name: string; email: string; department: string; total_received: number; total_sent: number; total_likes: number }
 
@@ -35,8 +36,20 @@ export default function AdminPage() {
   const [exportStartMonth, setExportStartMonth] = useState(new Date().getMonth() + 1)
   const [exportEndYear, setExportEndYear] = useState(new Date().getFullYear())
   const [exportEndMonth, setExportEndMonth] = useState(new Date().getMonth() + 1)
+  const [departmentData, setDepartmentData] = useState<any[]>([])
+
+  // Audit log viewer state
+  const [activeTab, setActiveTab] = useState<'stats' | 'audit'>('stats')
+  const [auditLogs, setAuditLogs] = useState<any[]>([])
+  const [auditLoading, setAuditLoading] = useState(false)
+  const [auditFilterAction, setAuditFilterAction] = useState('')
+  const [auditFilterUser, setAuditFilterUser] = useState('')
+  const [auditPage, setAuditPage] = useState(0)
+  const [auditTotal, setAuditTotal] = useState(0)
+  const AUDIT_PAGE_SIZE = 50
 
   useEffect(() => { load() }, [])
+  useEffect(() => { if (activeTab === 'audit') loadAuditLogs() }, [activeTab, auditPage, auditFilterAction, auditFilterUser])
 
   async function load() {
     setLoading(true)
@@ -77,6 +90,28 @@ export default function AdminPage() {
       setRows(stats)
     }
 
+    // Calculate department summary
+    const deptMap: Record<string, { received: number; sent: number; count: number }> = {}
+    const allRows = data || []
+    
+    allRows.forEach((row: any) => {
+      const dept = row.department || '未設定'
+      if (!deptMap[dept]) {
+        deptMap[dept] = { received: 0, sent: 0, count: 0 }
+      }
+      deptMap[dept].received += row.total_received || 0
+      deptMap[dept].sent += row.total_sent || 0
+      deptMap[dept].count += 1
+    })
+    
+    const deptData = Object.entries(deptMap).map(([name, stats]) => ({
+      部署: name,
+      平均受取: Math.round(stats.received / stats.count),
+      平均贈呈: Math.round(stats.sent / stats.count),
+      人数: stats.count
+    }))
+    
+    setDepartmentData(deptData)
     setLoading(false)
   }
 
@@ -106,6 +141,35 @@ export default function AdminPage() {
     a.href = url
     a.download = 'monthly_summary.csv'
     a.click()
+  }
+
+  async function loadAuditLogs() {
+    setAuditLoading(true)
+    try {
+      let query = supabase
+        .from('audit_logs')
+        .select('*', { count: 'exact' })
+        .order('timestamp', { ascending: false })
+        .range(auditPage * AUDIT_PAGE_SIZE, (auditPage + 1) * AUDIT_PAGE_SIZE - 1)
+
+      if (auditFilterAction) {
+        query = query.eq('action', auditFilterAction)
+      }
+      if (auditFilterUser) {
+        query = query.ilike('actor_name', `%${auditFilterUser}%`)
+      }
+
+      const { data, error, count } = await query
+      if (error) throw error
+
+      setAuditLogs(data || [])
+      setAuditTotal(count || 0)
+    } catch (err) {
+      console.error('監査ログ取得エラー:', err)
+      alert('監査ログの取得に失敗しました')
+    } finally {
+      setAuditLoading(false)
+    }
   }
 
   function downloadSampleCsv() {
@@ -274,10 +338,37 @@ export default function AdminPage() {
       <div className="min-h-screen bg-white py-16 px-4">
         <div className="container mx-auto max-w-5xl">
           <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-8">
-            <h2 className="text-4xl font-bold mb-2 text-center text-slate-900">管理者ダッシュボード</h2>
-            <p className="text-center text-gray-600 mb-8">今月のコイン受取サマリー</p>
+            <h2 className="text-4xl font-bold mb-6 text-center text-slate-900">管理者ダッシュボード</h2>
 
-            <div className="flex gap-4 flex-col md:flex-row justify-center mb-8">
+            {/* Tab Navigation */}
+            <div className="flex border-b border-gray-200 mb-8 justify-center">
+              <button
+                onClick={() => setActiveTab('stats')}
+                className={`px-6 py-3 font-semibold transition-colors ${
+                  activeTab === 'stats'
+                    ? 'text-teal-600 border-b-2 border-teal-600'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                統計・ユーザー管理
+              </button>
+              <button
+                onClick={() => setActiveTab('audit')}
+                className={`px-6 py-3 font-semibold transition-colors ${
+                  activeTab === 'audit'
+                    ? 'text-teal-600 border-b-2 border-teal-600'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                監査ログ
+              </button>
+            </div>
+
+            {activeTab === 'stats' && (
+              <>
+                <p className="text-center text-gray-600 mb-8">今月のコイン受取サマリー</p>
+
+                <div className="flex gap-4 flex-col md:flex-row justify-center mb-8">
               <button 
                 onClick={() => setShowAddUser(!showAddUser)} 
                 className="bg-teal-600 text-white px-6 py-3 rounded-md font-bold hover:bg-teal-700 transition"
@@ -524,6 +615,25 @@ export default function AdminPage() {
               </div>
             )}
 
+            {/* Department Comparison Chart */}
+            {departmentData.length > 0 && (
+              <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-8">
+                <h3 className="text-xl font-bold mb-4 text-gray-800">部署別コイン比較（今月）</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={departmentData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="部署" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="平均受取" fill="#0d9488" />
+                    <Bar dataKey="平均贈呈" fill="#64748b" />
+                  </BarChart>
+                </ResponsiveContainer>
+                <p className="text-xs text-gray-500 mt-2">※1人あたりの平均値を表示</p>
+              </div>
+            )}
+
             {loading ? (
               <p className="text-center text-gray-500">読み込み中...</p>
             ) : (
@@ -563,6 +673,127 @@ export default function AdminPage() {
                   </tbody>
                 </table>
               </div>
+            )}
+              </>
+            )}
+
+            {activeTab === 'audit' && (
+              <>
+                <p className="text-center text-gray-600 mb-8">システム操作履歴と異常検知ログ</p>
+
+                {/* Filters */}
+                <div className="flex gap-4 mb-6 flex-wrap items-end">
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">アクション</label>
+                    <select
+                      value={auditFilterAction}
+                      onChange={(e) => { setAuditFilterAction(e.target.value); setAuditPage(0) }}
+                      className="w-full border border-slate-300 rounded px-3 py-2"
+                    >
+                      <option value="">すべて</option>
+                      <option value="send_coins">コイン送信</option>
+                      <option value="like">いいね</option>
+                      <option value="anomaly_detected">異常検知</option>
+                      <option value="add_user">ユーザー追加</option>
+                      <option value="delete_user">ユーザー削除</option>
+                      <option value="bulk_add_users">一括追加</option>
+                      <option value="export">CSV出力</option>
+                    </select>
+                  </div>
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">ユーザー検索</label>
+                    <input
+                      type="text"
+                      value={auditFilterUser}
+                      onChange={(e) => { setAuditFilterUser(e.target.value); setAuditPage(0) }}
+                      placeholder="名前で検索"
+                      className="w-full border border-slate-300 rounded px-3 py-2"
+                    />
+                  </div>
+                  <button
+                    onClick={() => { setAuditFilterAction(''); setAuditFilterUser(''); setAuditPage(0) }}
+                    className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition"
+                  >
+                    リセット
+                  </button>
+                </div>
+
+                {auditLoading ? (
+                  <p className="text-center text-gray-500">読み込み中...</p>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto mb-6">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-50 border-b border-slate-200">
+                          <tr>
+                            <th className="p-3 text-left font-bold text-gray-700">日時</th>
+                            <th className="p-3 text-left font-bold text-gray-700">アクション</th>
+                            <th className="p-3 text-left font-bold text-gray-700">実行者</th>
+                            <th className="p-3 text-left font-bold text-gray-700">詳細</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {auditLogs.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} className="p-4 text-center text-gray-500">
+                                ログがありません
+                              </td>
+                            </tr>
+                          ) : (
+                            auditLogs.map((log) => (
+                              <tr key={log.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                <td className="p-3 text-gray-700">
+                                  {new Date(log.timestamp).toLocaleString('ja-JP')}
+                                </td>
+                                <td className="p-3">
+                                  <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
+                                    log.action === 'anomaly_detected' 
+                                      ? 'bg-red-100 text-red-700' 
+                                      : log.action === 'send_coins'
+                                      ? 'bg-teal-100 text-teal-700'
+                                      : 'bg-gray-100 text-gray-700'
+                                  }`}>
+                                    {log.action}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-gray-700">{log.actor_name || '-'}</td>
+                                <td className="p-3 text-gray-600 text-xs">
+                                  {typeof log.details === 'object' 
+                                    ? JSON.stringify(log.details, null, 2)
+                                    : log.details || '-'}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Pagination */}
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm text-gray-600">
+                        全 {auditTotal} 件中 {auditPage * AUDIT_PAGE_SIZE + 1} - {Math.min((auditPage + 1) * AUDIT_PAGE_SIZE, auditTotal)} 件を表示
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setAuditPage(Math.max(0, auditPage - 1))}
+                          disabled={auditPage === 0}
+                          className="px-4 py-2 border border-slate-300 rounded hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          前へ
+                        </button>
+                        <button
+                          onClick={() => setAuditPage(auditPage + 1)}
+                          disabled={(auditPage + 1) * AUDIT_PAGE_SIZE >= auditTotal}
+                          className="px-4 py-2 border border-slate-300 rounded hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          次へ
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </>
             )}
           </div>
         </div>

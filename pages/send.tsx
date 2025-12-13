@@ -109,28 +109,34 @@ export default function SendPage() {
     }
     
     setStatus('贈呈中...')
-    const sessionRes = await supabase.auth.getSession()
-    const token = (sessionRes as any)?.data?.session?.access_token
-    if (!token) {
-      setStatus('ログインしてください')
-      return
-    }
+    
+    try {
+      const sessionRes = await supabase.auth.getSession()
+      const token = (sessionRes as any)?.data?.session?.access_token
+      if (!token) {
+        setStatus('❌ ログインしてください')
+        return
+      }
 
-    const payload = { 
-      receiver_id: receiverId, 
-      coins, 
-      message,
-      emoji: selectedStamps.join('') 
-    }
+      const payload = { 
+        receiver_id: receiverId, 
+        coins, 
+        message,
+        emoji: selectedStamps.join('') 
+      }
 
-    const res = await fetch('/api/coins/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify(payload)
-    })
-    const j = await res.json()
-    if (res.ok) {
-      setStatus('贈呈しました')
+      const res = await fetch('/api/coins/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      })
+      
+      if (!res.ok) {
+        const j = await res.json()
+        throw new Error(j.error || j.message || 'サーバーエラー')
+      }
+      
+      setStatus('✅ 贈呈しました！')
       setReceiverId('')
       setReceiverName('')
       setSearchQuery('')
@@ -138,8 +144,15 @@ export default function SendPage() {
       setMessage('')
       setSelectedStamps([])
       await fetchRemaining()
-    } else {
-      setStatus('失敗: ' + (j.error || j.message || ''))
+      
+      // 3秒後にステータスをクリア
+      setTimeout(() => setStatus(''), 3000)
+    } catch (error: any) {
+      if (error.message === 'Failed to fetch') {
+        setStatus('❌ ネットワークエラー: インターネット接続を確認してください')
+      } else {
+        setStatus('❌ ' + error.message)
+      }
     }
   }
 

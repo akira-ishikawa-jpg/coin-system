@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import Header from '../components/Header'
 import { supabase } from '../lib/supabaseClient'
+import { requestNotificationPermission, checkNotificationSupport, showNotification } from '../lib/notifications'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 export default function MyPage() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
@@ -19,10 +21,57 @@ export default function MyPage() {
   const [editPassword, setEditPassword] = useState('')
   const [editMessage, setEditMessage] = useState('')
   const [editLoading, setEditLoading] = useState(false)
+  const [notificationEnabled, setNotificationEnabled] = useState(false)
+  const [notificationSupported, setNotificationSupported] = useState(false)
+  const [monthlyData, setMonthlyData] = useState<any[]>([])
 
   useEffect(() => {
     load()
-  }, [])
+    
+    // Check notification support and permission
+    const supported = checkNotificationSupport()
+    setNotificationSupported(supported)
+    if (supported && Notification.permission === 'granted') {
+      setNotificationEnabled(true)
+    }
+
+    // Poll for new transactions and show notifications
+    if (!empId) return
+    
+    const interval = setInterval(async () => {
+      if (!empId || !notificationEnabled) return
+      
+      // Get latest transaction
+      const { data: latest } = await supabase
+        .from('coin_transactions')
+        .select('id, coins, message, sender:sender_id(name), created_at')
+        .eq('receiver_id', empId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      
+      if (latest && latest.created_at) {
+        const createdAt = new Date(latest.created_at)
+        const now = new Date()
+        const diffMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60)
+        
+        // Show notification if transaction is within last 2 minutes
+        if (diffMinutes < 2) {
+          await showNotification(
+            `🎉 ${latest.coins}コイン受け取りました！`,
+            {
+              body: `${(latest.sender as any)?.name}さんから: ${latest.message}`,
+              icon: '/salesnow-logo.svg',
+              tag: `coin-${latest.id}`,
+              requireInteraction: false
+            }
+          )
+        }
+      }
+    }, 30000) // Check every 30 seconds
+    
+    return () => clearInterval(interval)
+  }, [empId, notificationEnabled])
 
   async function load() {
     const { data } = await supabase.auth.getUser()
@@ -82,7 +131,53 @@ export default function MyPage() {
       .limit(20)
 
     setTransactions(txns || [])
+    
+    // Load monthly trend data (last 6 months)
+    await loadMonthlyTrend(emp.id)
+    
     setLoading(false)
+  }
+
+  async function loadMonthlyTrend(employeeId: string) {
+    const data = []
+    const now = new Date()
+    
+    for (let i = 5; i >= 0; i--) {
+      const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const year = targetDate.getFullYear()
+      const month = targetDate.getMonth() + 1
+      const monthStart = `${year}-${String(month).padStart(2, '0')}-01`
+      const monthEnd = month === 12 
+        ? `${year + 1}-01-01` 
+        : `${year}-${String(month + 1).padStart(2, '0')}-01`
+      
+      // Get received coins
+      const { data: received } = await supabase
+        .from('coin_transactions')
+        .select('coins')
+        .eq('receiver_id', employeeId)
+        .gte('created_at', monthStart)
+        .lt('created_at', monthEnd)
+      
+      // Get sent coins
+      const { data: sent } = await supabase
+        .from('coin_transactions')
+        .select('coins')
+        .eq('sender_id', employeeId)
+        .gte('created_at', monthStart)
+        .lt('created_at', monthEnd)
+      
+      const receivedSum = (received || []).reduce((s: any, r: any) => s + (r.coins || 0), 0)
+      const sentSum = (sent || []).reduce((s: any, r: any) => s + (r.coins || 0), 0)
+      
+      data.push({
+        month: `${month}月`,
+        受取: receivedSum,
+        贈呈: sentSum
+      })
+    }
+    
+    setMonthlyData(data)
   }
 
   async function handleUpdateProfile() {
@@ -132,6 +227,21 @@ export default function MyPage() {
     } finally {
       setEditLoading(false)
       setEditPassword('')
+    }
+  }
+
+  async function handleEnableNotifications() {
+    const granted = await requestNotificationPermission()
+    setNotificationEnabled(granted)
+    
+    if (granted) {
+      // Test notification
+      await showNotification('通知を有効にしました', {
+        body: 'コイン受け取り時に通知が届くようになります',
+        icon: '/salesnow-logo.svg'
+      })
+    } else {
+      alert('通知が拒否されました。ブラウザの設定から許可してください。')
     }
   }
 
@@ -242,6 +352,48 @@ export default function MyPage() {
               <div className="text-xl font-bold text-teal-600">{sentThisMonth}</div>
             </div>
           </div>
+
+          {/* Monthly Trend Chart */}
+          {monthlyData.length > 0 && (
+            <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-8">
+              <h3 className="text-xl font-bold mb-4 text-gray-800">月間推移（過去6ヶ月）</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="受取" stroke="#0d9488" strokeWidth={2} />
+                  <Line type="monotone" dataKey="贈呈" stroke="#64748b" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Notification Settings */}
+          {notificationSupported && (
+            <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-8">
+              <h3 className="text-xl font-bold mb-4 text-gray-800">通知設定</h3>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-gray-700">プッシュ通知</p>
+                  <p className="text-sm text-gray-600">コイン受け取り時にブラウザ通知を受け取る</p>
+                </div>
+                <button
+                  onClick={handleEnableNotifications}
+                  disabled={notificationEnabled}
+                  className={`px-6 py-2 rounded-md font-bold transition ${
+                    notificationEnabled
+                      ? 'bg-green-100 text-green-700 cursor-not-allowed'
+                      : 'bg-teal-600 text-white hover:bg-teal-700'
+                  }`}
+                >
+                  {notificationEnabled ? '✓ 有効' : '有効にする'}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Transaction History */}
           <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-8">
