@@ -54,6 +54,45 @@ export default function AdminPage() {
   useEffect(() => { load() }, [])
   useEffect(() => { if (activeTab === 'audit') loadAuditLogs() }, [activeTab, auditPage, auditFilterAction, auditFilterUser])
 
+  // 排他的にセクションを開くための関数
+  function openExclusiveSection(section: 'addUser' | 'bulkUpload' | 'exportOptions') {
+    // 全てを一度閉じる
+    setShowAddUser(false)
+    setShowBulkUpload(false)
+    setShowExportOptions(false)
+    
+    // 指定されたセクションを開く
+    switch(section) {
+      case 'addUser':
+        setShowAddUser(true)
+        break
+      case 'bulkUpload':
+        setShowBulkUpload(true)
+        break
+      case 'exportOptions':
+        setShowExportOptions(true)
+        break
+    }
+  }
+
+  function toggleSection(section: 'addUser' | 'bulkUpload' | 'exportOptions') {
+    const isCurrentlyOpen = {
+      addUser: showAddUser,
+      bulkUpload: showBulkUpload,
+      exportOptions: showExportOptions
+    }[section]
+    
+    if (isCurrentlyOpen) {
+      // 開いている場合は閉じる
+      setShowAddUser(false)
+      setShowBulkUpload(false)
+      setShowExportOptions(false)
+    } else {
+      // 閉じている場合は排他的に開く
+      openExclusiveSection(section)
+    }
+  }
+
   async function load() {
     setLoading(true)
     const sessionRes = await supabase.auth.getSession()
@@ -400,7 +439,7 @@ export default function AdminPage() {
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-gray-50 pt-24 py-16 px-4">
+      <div className="min-h-screen bg-gray-50 pt-24 py-16 px-4 overflow-x-hidden">
         <div className="container mx-auto max-w-5xl">
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             <div className="bg-teal-600 text-white p-8 text-center">
@@ -438,19 +477,19 @@ export default function AdminPage() {
               <>
                 <div className="flex gap-4 flex-col md:flex-row justify-center mb-8">
               <button 
-                onClick={() => setShowAddUser(!showAddUser)} 
+                onClick={() => toggleSection('addUser')} 
                 className="bg-teal-600 text-white px-6 py-3 rounded-md font-bold hover:bg-teal-700 hover:scale-105 hover:shadow-lg transition-all duration-200"
               >
                 {showAddUser ? '閉じる' : 'ユーザー追加'}
               </button>
               <button 
-                onClick={() => setShowBulkUpload(!showBulkUpload)} 
+                onClick={() => toggleSection('bulkUpload')} 
                 className="bg-teal-600 text-white px-6 py-3 rounded-md font-bold hover:bg-teal-700 hover:scale-105 hover:shadow-lg transition-all duration-200"
               >
                 {showBulkUpload ? '閉じる' : 'CSV一括登録'}
               </button>
               <button 
-                onClick={() => setShowExportOptions(!showExportOptions)} 
+                onClick={() => toggleSection('exportOptions')} 
                 className="bg-teal-600 text-white px-6 py-3 rounded-md font-bold hover:bg-teal-700 hover:scale-105 hover:shadow-lg transition-all duration-200"
               >
                 {showExportOptions ? '閉じる' : 'CSVエクスポート'}

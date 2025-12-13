@@ -312,7 +312,7 @@ export default function HelpPage() {
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-gray-50 pt-24 py-16 px-4">
+      <div className="min-h-screen bg-gray-50 pt-24 py-16 px-4 overflow-x-hidden">
         <div className="container mx-auto max-w-5xl">
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             <div className="bg-teal-600 text-white p-8 text-center">
