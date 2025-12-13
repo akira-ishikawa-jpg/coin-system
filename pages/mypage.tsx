@@ -48,6 +48,7 @@ export default function MyPage() {
         .from('coin_transactions')
         .select('id, coins, message, sender:sender_id(name), created_at')
         .eq('receiver_id', empId)
+        .not('slack_payload', 'cs', '{\"bonus\":true}')
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle()
@@ -123,10 +124,10 @@ export default function MyPage() {
     const nextMonth = m === 12 ? 1 : m + 1
     const nextYear = m === 12 ? y + 1 : y
     
-    const { data: recv } = await supabase.from('coin_transactions').select('coins').eq('receiver_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`)
+    const { data: recv } = await supabase.from('coin_transactions').select('coins').eq('receiver_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`).not('slack_payload', 'cs', '{"bonus":true}')
     setReceivedThisMonth((recv || []).reduce((s:any,r:any)=>s+(r.coins||0),0))
     
-    const { data: sentMonth } = await supabase.from('coin_transactions').select('coins').eq('sender_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`)
+    const { data: sentMonth } = await supabase.from('coin_transactions').select('coins').eq('sender_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`).not('slack_payload', 'cs', '{"bonus":true}')
     setSentThisMonth((sentMonth || []).reduce((s:any,r:any)=>s+(r.coins||0),0))
 
     // get transaction history (sent and received)
@@ -134,6 +135,7 @@ export default function MyPage() {
       .from('coin_transactions')
       .select('id, sender_id, receiver_id, coins, message, created_at, sender:sender_id(name), receiver:receiver_id(name)')
       .or(`sender_id.eq.${emp.id},receiver_id.eq.${emp.id}`)
+      .not('slack_payload', 'cs', '{"bonus":true}')
       .order('created_at', { ascending: false })
       .limit(20)
 
@@ -165,6 +167,7 @@ export default function MyPage() {
         .eq('receiver_id', employeeId)
         .gte('created_at', monthStart)
         .lt('created_at', monthEnd)
+        .not('slack_payload', 'cs', '{"bonus":true}')
       
       // Get sent coins
       const { data: sent } = await supabase
@@ -173,6 +176,7 @@ export default function MyPage() {
         .eq('sender_id', employeeId)
         .gte('created_at', monthStart)
         .lt('created_at', monthEnd)
+        .not('slack_payload', 'cs', '{"bonus":true}')
       
       const receivedSum = (received || []).reduce((s: any, r: any) => s + (r.coins || 0), 0)
       const sentSum = (sent || []).reduce((s: any, r: any) => s + (r.coins || 0), 0)

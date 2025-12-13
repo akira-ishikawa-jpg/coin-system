@@ -58,16 +58,19 @@ RETURNS TABLE(employee_id uuid, name text, email text, department text, role tex
       WHERE ct_like.receiver_id = e.id
         AND ct_like.created_at >= make_date(year_in, month_in, 1)
         AND ct_like.created_at < (make_date(year_in, month_in, 1) + INTERVAL '1 month')
+        AND NOT (ct_like.slack_payload @> '{"bonus":true}')
     ), 0) AS total_likes
   FROM employees e
   LEFT JOIN coin_transactions ct_recv
     ON ct_recv.receiver_id = e.id
     AND ct_recv.created_at >= make_date(year_in, month_in, 1)
     AND ct_recv.created_at < (make_date(year_in, month_in, 1) + INTERVAL '1 month')
+    AND NOT (ct_recv.slack_payload @> '{"bonus":true}')
   LEFT JOIN coin_transactions ct_sent
     ON ct_sent.sender_id = e.id
     AND ct_sent.created_at >= make_date(year_in, month_in, 1)
     AND ct_sent.created_at < (make_date(year_in, month_in, 1) + INTERVAL '1 month')
+    AND NOT (ct_sent.slack_payload @> '{"bonus":true}')
   GROUP BY e.id, e.name, e.email, e.department, e.role
   HAVING COALESCE(SUM(CASE WHEN ct_recv.receiver_id = e.id THEN ct_recv.coins ELSE 0 END), 0) > 0
       OR COALESCE(SUM(CASE WHEN ct_sent.sender_id = e.id THEN ct_sent.coins ELSE 0 END), 0) > 0;

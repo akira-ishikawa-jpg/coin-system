@@ -133,9 +133,9 @@ export default function AdminPage() {
       const { data: employees } = await supabase.from('employees').select('id,name,email,department,role')
       const stats = await Promise.all(
         (employees || []).map(async (emp: any) => {
-          const { data: recv } = await supabase.from('coin_transactions').select('coins').eq('receiver_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`)
-          const { data: sent } = await supabase.from('coin_transactions').select('coins').eq('sender_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`)
-          const { data: likes } = await supabase.from('transaction_likes').select('id, coin_transactions!inner(receiver_id, created_at)').eq('coin_transactions.receiver_id', emp.id).gte('coin_transactions.created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('coin_transactions.created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`)
+          const { data: recv } = await supabase.from('coin_transactions').select('coins').eq('receiver_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`).not('slack_payload', 'cs', '{\"bonus\":true}')
+          const { data: sent } = await supabase.from('coin_transactions').select('coins').eq('sender_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`).not('slack_payload', 'cs', '{\"bonus\":true}')
+          const { data: likes } = await supabase.from('transaction_likes').select('id, coin_transactions!inner(receiver_id, created_at)').eq('coin_transactions.receiver_id', emp.id).gte('coin_transactions.created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('coin_transactions.created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`).not('coin_transactions.slack_payload', 'cs', '{\"bonus\":true}')
           return {
             employee_id: emp.id,
             name: emp.name,
