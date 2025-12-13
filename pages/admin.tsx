@@ -900,7 +900,7 @@ export default function AdminPage() {
                                 }`}
                                 title={`${r.name}にボーナスコインを付与`}
                               >
-                                🎁
+                                コイン付与
                               </button>
                               <button
                                 onClick={() => handleDeleteUser(r.employee_id, r.name)}
