@@ -160,8 +160,8 @@ export default function HelpPage() {
                       <li>自分のメッセージにいいねが付いた時</li>
                       <li>月初の自動配分時</li>
                     </ul>
-                    <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mt-6">
-                      <p className="text-blue-700">
+                    <div className="bg-teal-50 border-l-4 border-teal-400 p-4 mt-6">
+                      <p className="text-teal-700">
                         <strong>📱 対応ブラウザ:</strong> Chrome, Firefox, Edge, Safari(iOS 16.4以降)
                       </p>
                     </div>
