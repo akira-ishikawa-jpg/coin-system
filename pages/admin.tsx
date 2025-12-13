@@ -851,7 +851,7 @@ export default function AdminPage() {
                       <th className="p-3 text-right font-bold text-gray-700">月次受取合計</th>
                       <th className="p-3 text-right font-bold text-gray-700">月次贈呈合計</th>
                       <th className="p-3 text-right font-bold text-gray-700">月次いいね合計</th>
-                      <th className="p-3 text-center font-bold text-gray-700">操作</th>
+                      <th className="p-3 text-center font-bold text-gray-700 w-36">操作</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -891,8 +891,8 @@ export default function AdminPage() {
                           <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_received}</td>
                           <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_sent}</td>
                           <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_likes || 0}</td>
-                          <td className="p-3 text-center">
-                            <div className="flex gap-1 justify-center items-center flex-nowrap">
+                          <td className="p-3 text-center w-36">
+                            <div className="flex gap-1 justify-center items-center">
                               <button
                                 onClick={() => startBonusGrant(r.employee_id)}
                                 className={`px-2 py-1 rounded text-xs font-bold transition whitespace-nowrap ${
@@ -902,7 +902,7 @@ export default function AdminPage() {
                                 }`}
                                 title={`${r.name}にボーナスコインを付与`}
                               >
-                                コイン付与
+                                付与
                               </button>
                               <button
                                 onClick={() => handleDeleteUser(r.employee_id, r.name)}
