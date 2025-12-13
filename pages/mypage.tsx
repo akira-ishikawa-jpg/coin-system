@@ -275,18 +275,18 @@ export default function MyPage() {
             
             <div className="p-8">
             
-            <div className="flex justify-between items-center mb-6">
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 bg-red-600 text-white rounded-md font-bold hover:bg-red-700 hover:scale-105 hover:shadow-lg transition-all duration-200"
-              >
-                ログアウト
-              </button>
+            <div className="flex justify-end items-center gap-3 mb-6">
               <button
                 onClick={() => setEditMode(!editMode)}
                 className="px-4 py-2 bg-teal-600 text-white rounded-md font-bold hover:bg-teal-700 hover:scale-105 hover:shadow-lg transition-all duration-200"
               >
                 {editMode ? 'キャンセル' : 'プロフィール編集'}
+              </button>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 bg-red-600 text-white rounded-md font-bold hover:bg-red-700 hover:scale-105 hover:shadow-lg transition-all duration-200"
+              >
+                ログアウト
               </button>
             </div>
 
