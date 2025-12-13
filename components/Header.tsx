@@ -6,10 +6,41 @@ export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
   const [userName, setUserName] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    loadUserInfo()
+    // キャッシュされたユーザー情報を確認
+    const cachedUserName = sessionStorage.getItem('cached_user_name')
+    const cachedUserEmail = sessionStorage.getItem('cached_user_email')
+    
+    if (cachedUserName && cachedUserEmail) {
+      setUserName(cachedUserName)
+      setUserEmail(cachedUserEmail)
+      setIsLoading(false)
+    } else {
+      setIsLoading(true)
+      loadUserInfo()
+    }
+
+    // 認証状態の変更を監視
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        // ログアウト時にキャッシュをクリア
+        sessionStorage.removeItem('cached_user_name')
+        sessionStorage.removeItem('cached_user_email')
+        setUserName(null)
+        setUserEmail(null)
+        setIsLoading(false)
+      } else if (event === 'SIGNED_IN') {
+        // ログイン時に情報を再取得
+        setIsLoading(true)
+        loadUserInfo()
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function loadUserInfo() {
@@ -17,10 +48,15 @@ export default function Header() {
       const { data } = await supabase.auth.getUser()
       if (!data.user?.email) {
         setIsLoading(false)
+        // キャッシュをクリア
+        sessionStorage.removeItem('cached_user_name')
+        sessionStorage.removeItem('cached_user_email')
         return
       }
 
       setUserEmail(data.user.email)
+      // キャッシュに保存
+      sessionStorage.setItem('cached_user_email', data.user.email)
       
       const { data: emp } = await supabase
         .from('employees')
@@ -31,6 +67,8 @@ export default function Header() {
       
       if (emp) {
         setUserName(emp.name)
+        // キャッシュに保存
+        sessionStorage.setItem('cached_user_name', emp.name)
       }
     } catch (error) {
       console.error('ユーザー情報取得エラー:', error)
