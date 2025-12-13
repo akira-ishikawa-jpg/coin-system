@@ -52,9 +52,7 @@ export default function AdminPage() {
   const AUDIT_PAGE_SIZE = 50
 
   // Bonus grant state
-  const [showBonusGrant, setShowBonusGrant] = useState(false)
-  const [bonusEmployeeId, setBonusEmployeeId] = useState('')
-  const [bonusEmployeeName, setBonusEmployeeName] = useState('')
+  const [openBonusRowId, setOpenBonusRowId] = useState<string | null>(null)
   const [bonusCoins, setBonusCoins] = useState('')
   const [bonusReason, setBonusReason] = useState('')
   const [bonusLoading, setBonusLoading] = useState(false)
@@ -69,7 +67,7 @@ export default function AdminPage() {
     setShowAddUser(false)
     setShowBulkUpload(false)
     setShowExportOptions(false)
-    setShowBonusGrant(false)
+    setOpenBonusRowId(null)
     
     // 指定されたセクションを開く
     switch(section) {
@@ -97,7 +95,7 @@ export default function AdminPage() {
       setShowAddUser(false)
       setShowBulkUpload(false)
       setShowExportOptions(false)
-      setShowBonusGrant(false)
+      setOpenBonusRowId(null)
     } else {
       // 閉じている場合は排他的に開く
       openExclusiveSection(section)
@@ -178,8 +176,8 @@ export default function AdminPage() {
     setLoading(false)
   }
 
-  async function grantBonus() {
-    if (!bonusEmployeeId || !bonusCoins || !bonusReason) {
+  async function grantBonus(employeeId: string, employeeName: string) {
+    if (!bonusCoins || !bonusReason) {
       setBonusMessage('全ての項目を入力してください')
       return
     }
@@ -209,7 +207,7 @@ export default function AdminPage() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          employee_id: bonusEmployeeId,
+          employee_id: employeeId,
           coins: coins,
           reason: bonusReason
         })
@@ -219,14 +217,12 @@ export default function AdminPage() {
       
       if (res.ok) {
         setBonusMessage(result.message || 'ボーナスコインを付与しました')
-        setBonusEmployeeId('')
-        setBonusEmployeeName('')
         setBonusCoins('')
         setBonusReason('')
         load() // Refresh data
         // Close the form after 2 seconds
         setTimeout(() => {
-          setShowBonusGrant(false)
+          setOpenBonusRowId(null)
           setBonusMessage('')
         }, 2000)
       } else {
@@ -239,19 +235,20 @@ export default function AdminPage() {
     setBonusLoading(false)
   }
 
-  function startBonusGrant(employeeId: string, employeeName: string) {
-    // Close other sections first
-    setShowAddUser(false)
-    setShowBulkUpload(false)
-    setShowExportOptions(false)
-    
-    // Set up bonus grant form
-    setBonusEmployeeId(employeeId)
-    setBonusEmployeeName(employeeName)
-    setBonusCoins('')
-    setBonusReason('')
-    setBonusMessage('')
-    setShowBonusGrant(true)
+  function startBonusGrant(employeeId: string) {
+    if (openBonusRowId === employeeId) {
+      // Already open, close it
+      setOpenBonusRowId(null)
+      setBonusCoins('')
+      setBonusReason('')
+      setBonusMessage('')
+    } else {
+      // Open for this row
+      setOpenBonusRowId(employeeId)
+      setBonusCoins('')
+      setBonusReason('')
+      setBonusMessage('')
+    }
   }
 
   async function exportCsv() {
@@ -717,68 +714,6 @@ export default function AdminPage() {
               </div>
             )}
 
-            {/* Bonus Grant Form */}
-            {showBonusGrant && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-8">
-                <h3 className="text-xl font-bold mb-4 text-amber-900">
-                  🎁 {bonusEmployeeName} さんにボーナスコイン付与
-                </h3>
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">対象者</label>
-                    <div className="p-3 bg-white border border-amber-300 rounded-md text-gray-700 font-semibold">
-                      {bonusEmployeeName}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">付与コイン数</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="1000"
-                      placeholder="例: 50"
-                      value={bonusCoins}
-                      onChange={(e) => setBonusCoins(e.target.value)}
-                      className="w-full border border-amber-300 p-3 rounded-md focus:outline-none focus:border-amber-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">理由</label>
-                    <textarea
-                      placeholder="例: 月間MVP賞、特別プロジェクト貢献など"
-                      value={bonusReason}
-                      onChange={(e) => setBonusReason(e.target.value)}
-                      className="w-full border border-amber-300 p-3 rounded-md focus:outline-none focus:border-amber-500 h-20"
-                    />
-                  </div>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={grantBonus}
-                      disabled={bonusLoading || !bonusCoins || !bonusReason}
-                      className="flex-1 bg-amber-600 text-white px-4 py-3 rounded-md font-bold hover:bg-amber-700 transition disabled:opacity-50"
-                    >
-                      {bonusLoading ? '付与中...' : '🎁 ボーナスコインを付与'}
-                    </button>
-                    <button
-                      onClick={() => setShowBonusGrant(false)}
-                      className="px-4 py-3 border border-amber-300 text-amber-700 rounded-md font-bold hover:bg-amber-100 transition"
-                    >
-                      キャンセル
-                    </button>
-                  </div>
-                </div>
-                {bonusMessage && (
-                  <div className={`mt-4 p-4 rounded-md ${
-                    bonusMessage.includes('付与しました') 
-                      ? 'bg-green-50 text-green-700 border border-green-200' 
-                      : 'bg-red-50 text-red-700 border border-red-200'
-                  }`}>
-                    {bonusMessage}
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* CSV Export Options */}
             {showExportOptions && (
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 mb-8">
@@ -920,58 +855,125 @@ export default function AdminPage() {
                   </thead>
                   <tbody>
                     {rows.map((r, idx) => (
-                      <tr key={r.employee_id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                        <td className="p-3 text-gray-800 font-bold">{r.name}</td>
-                        <td className="p-3 text-gray-600 text-xs">{r.email}</td>
-                        <td className="p-3 text-gray-600">{r.department}</td>
-                        <td className="p-3">
-                          <div className="flex items-center gap-2">
-                            {currentUser?.role === 'admin' ? (
-                              <button
-                                onClick={() => handleRoleChange(r.employee_id, (r as any).role, r.name)}
-                                disabled={updatingRoleId === r.employee_id}
-                                className={`px-2 py-1 rounded-full text-xs font-semibold transition-all duration-200 hover:scale-105 disabled:opacity-50 cursor-pointer ${
+                      <>
+                        <tr key={r.employee_id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                          <td className="p-3 text-gray-800 font-bold">{r.name}</td>
+                          <td className="p-3 text-gray-600 text-xs">{r.email}</td>
+                          <td className="p-3 text-gray-600">{r.department}</td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-2">
+                              {currentUser?.role === 'admin' ? (
+                                <button
+                                  onClick={() => handleRoleChange(r.employee_id, (r as any).role, r.name)}
+                                  disabled={updatingRoleId === r.employee_id}
+                                  className={`px-2 py-1 rounded-full text-xs font-semibold transition-all duration-200 hover:scale-105 disabled:opacity-50 cursor-pointer ${
+                                    (r as any).role === 'admin' 
+                                      ? 'bg-red-100 text-red-800 hover:bg-red-200' 
+                                      : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                                  }`}
+                                  title={`クリックで${(r as any).role === 'admin' ? '一般ユーザー' : '管理者'}に変更`}
+                                >
+                                  {updatingRoleId === r.employee_id ? '変更中...' : (r as any).role === 'admin' ? '管理者' : '一般'}
+                                </button>
+                              ) : (
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                                   (r as any).role === 'admin' 
-                                    ? 'bg-red-100 text-red-800 hover:bg-red-200' 
-                                    : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                                    ? 'bg-red-100 text-red-800' 
+                                    : 'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {(r as any).role === 'admin' ? '管理者' : '一般'}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_received}</td>
+                          <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_sent}</td>
+                          <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_likes || 0}</td>
+                          <td className="p-3 text-center">
+                            <div className="flex gap-2 justify-center">
+                              <button
+                                onClick={() => startBonusGrant(r.employee_id)}
+                                className={`px-3 py-1 rounded text-sm font-bold transition ${
+                                  openBonusRowId === r.employee_id 
+                                    ? 'bg-amber-600 text-white' 
+                                    : 'bg-amber-500 text-white hover:bg-amber-600'
                                 }`}
-                                title={`クリックで${(r as any).role === 'admin' ? '一般ユーザー' : '管理者'}に変更`}
+                                title={`${r.name}にボーナスコインを付与`}
                               >
-                                {updatingRoleId === r.employee_id ? '変更中...' : (r as any).role === 'admin' ? '管理者' : '一般'}
+                                🎁
                               </button>
-                            ) : (
-                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                (r as any).role === 'admin' 
-                                  ? 'bg-red-100 text-red-800' 
-                                  : 'bg-blue-100 text-blue-800'
-                              }`}>
-                                {(r as any).role === 'admin' ? '管理者' : '一般'}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_received}</td>
-                        <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_sent}</td>
-                        <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_likes || 0}</td>
-                        <td className="p-3 text-center">
-                          <div className="flex gap-2 justify-center">
-                            <button
-                              onClick={() => startBonusGrant(r.employee_id, r.name)}
-                              className="bg-amber-500 text-white px-3 py-1 rounded text-sm hover:bg-amber-600 transition font-bold"
-                              title={`${r.name}にボーナスコインを付与`}
-                            >
-                              🎁
-                            </button>
-                            <button
-                              onClick={() => handleDeleteUser(r.employee_id, r.name)}
-                              disabled={deletingId === r.employee_id}
-                              className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition disabled:opacity-50"
-                            >
-                              {deletingId === r.employee_id ? '削除中...' : '削除'}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+                              <button
+                                onClick={() => handleDeleteUser(r.employee_id, r.name)}
+                                disabled={deletingId === r.employee_id}
+                                className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition disabled:opacity-50"
+                              >
+                                {deletingId === r.employee_id ? '削除中...' : '削除'}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        
+                        {/* Inline Bonus Grant Form */}
+                        {openBonusRowId === r.employee_id && (
+                          <tr className={idx % 2 === 0 ? 'bg-amber-50' : 'bg-amber-100'}>
+                            <td colSpan={8} className="p-4">
+                              <div className="bg-white border border-amber-200 rounded-lg p-4 shadow-sm">
+                                <h4 className="text-lg font-bold text-amber-900 mb-3 flex items-center">
+                                  🎁 {r.name} さんにボーナスコイン付与
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                  <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">付与コイン数</label>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      max="1000"
+                                      placeholder="例: 50"
+                                      value={bonusCoins}
+                                      onChange={(e) => setBonusCoins(e.target.value)}
+                                      className="w-full border border-amber-300 p-2 rounded-md focus:outline-none focus:border-amber-500"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">理由</label>
+                                    <input
+                                      type="text"
+                                      placeholder="例: 月間MVP賞"
+                                      value={bonusReason}
+                                      onChange={(e) => setBonusReason(e.target.value)}
+                                      className="w-full border border-amber-300 p-2 rounded-md focus:outline-none focus:border-amber-500"
+                                    />
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => grantBonus(r.employee_id, r.name)}
+                                      disabled={bonusLoading || !bonusCoins || !bonusReason}
+                                      className="bg-amber-600 text-white px-4 py-2 rounded-md font-bold hover:bg-amber-700 transition disabled:opacity-50 flex-1"
+                                    >
+                                      {bonusLoading ? '付与中...' : '付与'}
+                                    </button>
+                                    <button
+                                      onClick={() => setOpenBonusRowId(null)}
+                                      className="px-4 py-2 border border-amber-300 text-amber-700 rounded-md font-bold hover:bg-amber-100 transition"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                </div>
+                                {bonusMessage && (
+                                  <div className={`mt-3 p-3 rounded-md text-sm ${
+                                    bonusMessage.includes('付与しました') 
+                                      ? 'bg-green-50 text-green-700 border border-green-200' 
+                                      : 'bg-red-50 text-red-700 border border-red-200'
+                                  }`}>
+                                    {bonusMessage}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
                     ))}
                   </tbody>
                 </table>
