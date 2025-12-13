@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import Header from '../components/Header'
+import confetti from 'canvas-confetti'
 
 type Employee = { id: string; name: string; slack_id?: string }
 
@@ -137,6 +138,15 @@ export default function SendPage() {
       }
       
       setStatus('✅ 贈呈しました！')
+      
+      // 紙吹雪アニメーション
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#0d9488', '#14b8a6', '#2dd4bf', '#5eead4', '#99f6e4']
+      })
+      
       setReceiverId('')
       setReceiverName('')
       setSearchQuery('')
@@ -171,7 +181,7 @@ export default function SendPage() {
             
             {remaining !== null && (
               <div className="text-center mb-6">
-                <div className="inline-block bg-teal-50 border border-teal-200 rounded-lg px-6 py-3">
+                <div className="inline-block bg-teal-50 border border-teal-200 rounded-lg px-6 py-3 transition-all duration-300 hover:shadow-lg hover:scale-105">
                   <span className="text-sm text-gray-600">今週の残コイン: </span>
                   <span className="text-2xl font-bold text-teal-600">{remaining}</span>
                   <span className="text-sm text-gray-600"> / 250</span>
@@ -265,10 +275,10 @@ export default function SendPage() {
                           setSelectedStamps([...selectedStamps, stamp])
                         }
                       }}
-                      className={`p-3 text-2xl rounded-md border-2 transition hover:scale-110 ${
+                      className={`p-3 text-2xl rounded-md border-2 transition-all duration-200 hover:scale-125 hover:rotate-12 ${
                         selectedStamps.includes(stamp)
-                          ? 'border-teal-500 bg-teal-50 scale-110'
-                          : 'border-slate-200 bg-white hover:border-teal-300'
+                          ? 'border-teal-500 bg-teal-50 scale-110 shadow-md'
+                          : 'border-slate-200 bg-white hover:border-teal-300 hover:shadow-lg'
                       }`}
                     >
                       {stamp}
@@ -286,14 +296,14 @@ export default function SendPage() {
               <button 
                 type="submit"
                 disabled={(remaining !== null && coins > remaining) || coins > 100 || !message.trim() || !receiverId}
-                className="w-full bg-teal-600 text-white px-4 py-3 rounded-md font-bold hover:bg-teal-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-teal-600 text-white px-4 py-3 rounded-md font-bold hover:bg-teal-700 hover:scale-105 hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
               >
                 贈呈する
               </button>
             </form>
 
             {status && (
-              <div className={`mt-6 p-4 rounded-md font-semibold ${
+              <div className={`mt-6 p-4 rounded-md font-semibold animate-fade-in ${
                 status.includes('失敗') || status.includes('ログイン')
                   ? 'bg-red-50 text-red-700 border border-red-200'
                   : status.includes('贈呈中')

@@ -358,7 +358,7 @@ export default function AdminPage() {
             <div className="flex border-b border-gray-200 mb-8 justify-center">
               <button
                 onClick={() => setActiveTab('stats')}
-                className={`px-6 py-3 font-semibold transition-colors ${
+                className={`px-6 py-3 font-semibold transition-all duration-200 hover:scale-105 ${
                   activeTab === 'stats'
                     ? 'text-teal-600 border-b-2 border-teal-600'
                     : 'text-gray-500 hover:text-gray-700'
@@ -368,7 +368,7 @@ export default function AdminPage() {
               </button>
               <button
                 onClick={() => setActiveTab('audit')}
-                className={`px-6 py-3 font-semibold transition-colors ${
+                className={`px-6 py-3 font-semibold transition-all duration-200 hover:scale-105 ${
                   activeTab === 'audit'
                     ? 'text-teal-600 border-b-2 border-teal-600'
                     : 'text-gray-500 hover:text-gray-700'
@@ -383,19 +383,19 @@ export default function AdminPage() {
                 <div className="flex gap-4 flex-col md:flex-row justify-center mb-8">
               <button 
                 onClick={() => setShowAddUser(!showAddUser)} 
-                className="bg-teal-600 text-white px-6 py-3 rounded-md font-bold hover:bg-teal-700 transition"
+                className="bg-teal-600 text-white px-6 py-3 rounded-md font-bold hover:bg-teal-700 hover:scale-105 hover:shadow-lg transition-all duration-200"
               >
                 {showAddUser ? '閉じる' : 'ユーザー追加'}
               </button>
               <button 
                 onClick={() => setShowBulkUpload(!showBulkUpload)} 
-                className="bg-teal-600 text-white px-6 py-3 rounded-md font-bold hover:bg-teal-700 transition"
+                className="bg-teal-600 text-white px-6 py-3 rounded-md font-bold hover:bg-teal-700 hover:scale-105 hover:shadow-lg transition-all duration-200"
               >
                 {showBulkUpload ? '閉じる' : 'CSV一括登録'}
               </button>
               <button 
                 onClick={() => setShowExportOptions(!showExportOptions)} 
-                className="bg-teal-600 text-white px-6 py-3 rounded-md font-bold hover:bg-teal-700 transition"
+                className="bg-teal-600 text-white px-6 py-3 rounded-md font-bold hover:bg-teal-700 hover:scale-105 hover:shadow-lg transition-all duration-200"
               >
                 {showExportOptions ? '閉じる' : 'CSVエクスポート'}
               </button>
@@ -629,7 +629,7 @@ export default function AdminPage() {
 
             {/* Department Comparison Chart */}
             {departmentData.length > 0 && (
-              <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-8">
+              <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-8 transition-all duration-300 hover:shadow-lg">
                 <h3 className="text-xl font-bold mb-4 text-gray-800">部署別コイン比較（今月）</h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={departmentData}>

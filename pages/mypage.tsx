@@ -266,7 +266,7 @@ export default function MyPage() {
             <div className="flex justify-end mb-6">
               <button
                 onClick={() => setEditMode(!editMode)}
-                className="px-4 py-2 bg-teal-600 text-white rounded-md font-bold hover:bg-teal-700 transition"
+                className="px-4 py-2 bg-teal-600 text-white rounded-md font-bold hover:bg-teal-700 hover:scale-105 hover:shadow-lg transition-all duration-200"
               >
                 {editMode ? 'キャンセル' : 'プロフィール編集'}
               </button>
@@ -350,15 +350,15 @@ export default function MyPage() {
               <div className="text-xs text-gray-600 mb-1">メールアドレス</div>
               <div className="text-xs font-bold text-slate-900 truncate">{userEmail || '-'}</div>
             </div>
-            <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4">
+            <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 transition-all duration-300 hover:shadow-lg hover:scale-105">
               <div className="text-xs text-gray-600 mb-1">今週の残コイン</div>
               <div className="text-xl font-bold text-teal-600">{remaining === null ? '-' : remaining}</div>
             </div>
-            <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4">
+            <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 transition-all duration-300 hover:shadow-lg hover:scale-105">
               <div className="text-xs text-gray-600 mb-1">今月の受取</div>
               <div className="text-xl font-bold text-teal-600">{receivedThisMonth}</div>
             </div>
-            <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4">
+            <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 transition-all duration-300 hover:shadow-lg hover:scale-105">
               <div className="text-xs text-gray-600 mb-1">今月の贈呈</div>
               <div className="text-xl font-bold text-teal-600">{sentThisMonth}</div>
             </div>
@@ -366,7 +366,7 @@ export default function MyPage() {
 
           {/* Monthly Trend Chart */}
           {monthlyData.length > 0 && (
-            <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-8">
+            <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-8 transition-all duration-300 hover:shadow-lg">
               <h3 className="text-xl font-bold mb-4 text-gray-800">月間推移（過去6ヶ月）</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={monthlyData}>

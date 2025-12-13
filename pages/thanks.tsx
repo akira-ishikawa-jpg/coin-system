@@ -164,9 +164,9 @@ export default function ThanksPage() {
                 <div className="flex flex-wrap justify-center gap-2">
                   <button
                     onClick={() => filterByDepartment('all')}
-                    className={`px-4 py-2 rounded-md font-semibold text-sm transition ${
+                    className={`px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 hover:scale-110 active:scale-95 ${
                       selectedDepartment === 'all'
-                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        ? 'bg-green-600 text-white hover:bg-green-700 shadow-md'
                         : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
                     }`}
                   >
@@ -176,9 +176,9 @@ export default function ThanksPage() {
                     <button
                       key={dept}
                       onClick={() => filterByDepartment(dept)}
-                      className={`px-4 py-2 rounded-md font-semibold text-sm transition ${
+                      className={`px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 hover:scale-110 active:scale-95 ${
                         selectedDepartment === dept
-                          ? 'bg-green-600 text-white hover:bg-green-700'
+                          ? 'bg-green-600 text-white hover:bg-green-700 shadow-md'
                           : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
                       }`}
                     >
@@ -195,8 +195,12 @@ export default function ThanksPage() {
               <p className="text-center text-gray-500">まだ感謝が贈られていません</p>
             ) : (
               <div className="space-y-4">
-                {transactions.map((tx) => (
-                  <div key={tx.id} className="bg-slate-50 border border-slate-200 rounded-lg p-6 hover:shadow-sm transition">
+                {transactions.map((tx, index) => (
+                  <div 
+                    key={tx.id} 
+                    className="bg-slate-50 border border-slate-200 rounded-lg p-6 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 animate-slide-in"
+                    style={{ animationDelay: `${index * 0.05}s` }}
+                  >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
@@ -220,13 +224,13 @@ export default function ThanksPage() {
                     <div className="flex items-center gap-3 pt-3 border-t border-slate-200">
                       <button
                         onClick={() => toggleLike(tx.id)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-md font-semibold transition ${
+                        className={`flex items-center gap-2 px-4 py-2 rounded-md font-semibold transition-all duration-200 hover:scale-110 active:scale-95 ${
                           tx.user_has_liked
-                            ? 'bg-teal-600 text-white hover:bg-teal-700'
+                            ? 'bg-teal-600 text-white hover:bg-teal-700 animate-pulse-once'
                             : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
                         }`}
                       >
-                        <span>{tx.user_has_liked ? '❤️' : '🤍'}</span>
+                        <span className="text-lg">{tx.user_has_liked ? '❤️' : '🤍'}</span>
                         <span>いいね</span>
                         {tx.likes_count > 0 && <span>({tx.likes_count})</span>}
                       </button>

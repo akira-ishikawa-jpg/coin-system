@@ -74,9 +74,9 @@ export default function RankingPage() {
             <div className="flex justify-center gap-4 mb-8">
               <button
                 onClick={() => setViewMode('received')}
-                className={`px-6 py-2 rounded-md font-bold transition ${
+                className={`px-6 py-2 rounded-md font-bold transition-all duration-200 hover:scale-105 hover:shadow-md ${
                   viewMode === 'received'
-                    ? 'bg-teal-600 text-white'
+                    ? 'bg-teal-600 text-white shadow-md'
                     : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
                 }`}
               >
@@ -84,9 +84,9 @@ export default function RankingPage() {
               </button>
               <button
                 onClick={() => setViewMode('sent')}
-                className={`px-6 py-2 rounded-md font-bold transition ${
+                className={`px-6 py-2 rounded-md font-bold transition-all duration-200 hover:scale-105 hover:shadow-md ${
                   viewMode === 'sent'
-                    ? 'bg-teal-600 text-white'
+                    ? 'bg-teal-600 text-white shadow-md'
                     : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
                 }`}
               >
@@ -108,7 +108,7 @@ export default function RankingPage() {
                     const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '  '
                     const bgColor = idx < 3 ? 'bg-slate-50' : 'bg-white'
                     return (
-                      <div key={idx} className={`${bgColor} border-l-4 ${idx === 0 ? 'border-teal-500' : idx === 1 ? 'border-slate-300' : idx === 2 ? 'border-slate-300' : 'border-slate-200'} rounded p-4 flex items-center justify-between hover:shadow-sm transition`}>
+                      <div key={idx} className={`${bgColor} border-l-4 ${idx === 0 ? 'border-teal-500' : idx === 1 ? 'border-slate-300' : idx === 2 ? 'border-slate-300' : 'border-slate-200'} rounded p-4 flex items-center justify-between hover:shadow-lg hover:scale-[1.02] transition-all duration-300`}>
                         <div className="flex items-center gap-4">
                           <div className="text-2xl font-bold w-8 text-center">{medal}</div>
                           <div>
@@ -132,11 +132,11 @@ export default function RankingPage() {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {Object.entries(byDept).map(([dept, rows]) => (
-                    <div key={dept} className="bg-white border border-slate-200 rounded-lg shadow-sm p-6">
+                    <div key={dept} className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 hover:shadow-lg transition-all duration-300">
                       <h4 className="text-lg font-bold mb-4 text-gray-800 pb-3 border-b border-slate-200">{dept}</h4>
                       <div className="space-y-2">
                         {rows.map((row, idx) => (
-                          <div key={idx} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded transition">
+                          <div key={idx} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded transition-all duration-200 hover:scale-105">
                             <div>
                               <div className="font-bold text-gray-800">{row.name}</div>
                             </div>
