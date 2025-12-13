@@ -249,7 +249,7 @@ export default function MyPage() {
     <>
       <Header />
       <div className="min-h-screen bg-gray-50 py-16 px-4">
-        <div className="container mx-auto max-w-4xl">
+        <div className="container mx-auto max-w-5xl">
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             <div className="bg-teal-600 text-white p-8 text-center">
               <h1 className="text-4xl font-bold mb-2">👤 マイページ</h1>
