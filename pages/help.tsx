@@ -24,7 +24,7 @@ export default function HelpPage() {
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             <div className="bg-teal-600 text-white p-8 text-center">
               <h1 className="text-4xl font-bold mb-2">📖 ヘルプ・ユーザーマニュアル</h1>
-              <p className="text-teal-100">コインシステムの使い方ガイド</p>
+              <p className="text-teal-100">感謝なうの使い方ガイド</p>
             </div>
 
             <div className="flex flex-col md:flex-row">
@@ -55,7 +55,7 @@ export default function HelpPage() {
                   <div>
                     <h2 className="text-3xl font-bold text-gray-900 mb-4">🚀 はじめに</h2>
                     <p className="text-gray-700 mb-4">
-                      コインシステムへようこそ!このシステムは、社内で感謝やねぎらいの気持ちを形にし、
+                      感謝なうへようこそ!このシステムは、社内で感謝やねぎらいの気持ちを形にし、
                       チームのエンゲージメントを高めるためのツールです。
                     </p>
                     <h3 className="text-xl font-bold text-gray-800 mt-6 mb-3">主な機能</h3>
@@ -226,7 +226,7 @@ export default function HelpPage() {
                   <div>
                     <h2 className="text-3xl font-bold text-gray-900 mb-4">💬 Slack連携</h2>
                     <p className="text-gray-700 mb-4">
-                      SlackアプリをインストールすることでSlackからコインシステムを利用できます。
+                      SlackアプリをインストールすることでSlackから感謝なうを利用できます。
                     </p>
                     <h3 className="text-xl font-bold text-gray-800 mt-6 mb-3">Slackコマンド</h3>
                     <div className="space-y-4">
