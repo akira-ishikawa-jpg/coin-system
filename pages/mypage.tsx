@@ -116,10 +116,15 @@ export default function MyPage() {
     const now = new Date()
     const y = now.getFullYear()
     const m = now.getMonth() + 1
-    const { data: recv } = await supabase.from('coin_transactions').select('coins').eq('receiver_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${y}-${String(m+1).padStart(2,'0')}-01`)
+    
+    // Calculate next month (handle year rollover)
+    const nextMonth = m === 12 ? 1 : m + 1
+    const nextYear = m === 12 ? y + 1 : y
+    
+    const { data: recv } = await supabase.from('coin_transactions').select('coins').eq('receiver_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`)
     setReceivedThisMonth((recv || []).reduce((s:any,r:any)=>s+(r.coins||0),0))
     
-    const { data: sentMonth } = await supabase.from('coin_transactions').select('coins').eq('sender_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${y}-${String(m+1).padStart(2,'0')}-01`)
+    const { data: sentMonth } = await supabase.from('coin_transactions').select('coins').eq('sender_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`)
     setSentThisMonth((sentMonth || []).reduce((s:any,r:any)=>s+(r.coins||0),0))
 
     // get transaction history (sent and received)
