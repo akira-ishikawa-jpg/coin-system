@@ -15,6 +15,7 @@ export default function AdminPage() {
   const [newEmail, setNewEmail] = useState('')
   const [newDepartment, setNewDepartment] = useState('')
   const [newPassword, setNewPassword] = useState('')
+  const [newSlackId, setNewSlackId] = useState('')
   const [addMessage, setAddMessage] = useState('')
   const [addLoading, setAddLoading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -104,7 +105,8 @@ export default function AdminPage() {
           name: newName,
           email: newEmail,
           department: newDepartment,
-          password: newPassword
+          password: newPassword,
+          slack_id: newSlackId || null
         })
       })
 
@@ -116,6 +118,7 @@ export default function AdminPage() {
         setNewEmail('')
         setNewDepartment('')
         setNewPassword('')
+        setNewSlackId('')
         setShowAddUser(false)
         // Reload the user list
         await load()
@@ -250,6 +253,16 @@ export default function AdminPage() {
                       onChange={(e) => setNewPassword(e.target.value)}
                       className="w-full border border-slate-300 p-3 rounded-md focus:outline-none focus:border-teal-500"
                       placeholder="6文字以上"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Slack ID（任意）</label>
+                    <input
+                      type="text"
+                      value={newSlackId}
+                      onChange={(e) => setNewSlackId(e.target.value)}
+                      className="w-full border border-slate-300 p-3 rounded-md focus:outline-none focus:border-teal-500"
+                      placeholder="U01234ABCDE"
                     />
                   </div>
                 </div>

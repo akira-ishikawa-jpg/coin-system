@@ -39,8 +39,18 @@ npm install --save-dev @types/node @types/react
 ```bash
 cp .env.example .env.local
 # .env.local を編集して値を設定：
-# SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
-# SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET, TASK_SECRET
+# - Supabase
+SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJxxx...
+SUPABASE_SERVICE_ROLE_KEY=eyJxxx...
+
+# - Slack連携
+SLACK_BOT_TOKEN=xoxb-xxx...
+SLACK_SIGNING_SECRET=xxx...
+SLACK_CHANNEL_ID=C01234ABC
+
+# - タスク認証
+TASK_SECRET=your-secret-key
 ```
 
 ### 3. Supabase のスキーマを適用

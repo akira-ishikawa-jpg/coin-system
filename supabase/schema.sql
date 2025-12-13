@@ -18,7 +18,17 @@ CREATE TABLE IF NOT EXISTS coin_transactions (
   receiver_id uuid REFERENCES employees(id) ON DELETE SET NULL,
   coins int NOT NULL CHECK (coins > 0),
   message text,
-  emoji text,-- 1. いいねテーブルの作成
+  emoji text,
+  week_start date,
+  slack_payload jsonb,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_coin_transactions_sender ON coin_transactions(sender_id);
+CREATE INDEX IF NOT EXISTS idx_coin_transactions_receiver ON coin_transactions(receiver_id);
+CREATE INDEX IF NOT EXISTS idx_coin_transactions_created_at ON coin_transactions(created_at);
+
+-- 1. いいねテーブルの作成
 CREATE TABLE IF NOT EXISTS transaction_likes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   transaction_id uuid REFERENCES coin_transactions(id) ON DELETE CASCADE,

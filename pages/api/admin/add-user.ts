@@ -36,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // Get request body
-  const { name, email, department, password } = req.body
+  const { name, email, department, password, slack_id } = req.body
 
   if (!name || !email || !department || !password) {
     return res.status(400).json({ error: 'Missing required fields: name, email, department, password' })
@@ -66,7 +66,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         name,
         email,
         department,
-        role: 'user'
+        role: 'user',
+        slack_id: slack_id || null
       })
 
     if (empError) {
