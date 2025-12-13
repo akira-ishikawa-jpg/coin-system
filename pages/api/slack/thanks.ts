@@ -48,21 +48,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const body = querystring.parse(raw)
-  // body.text example: "<@U12345> 50 ありがとう！"
+  // body.text example: "<@U12345> 50 ありがとう！" or "<@U12345> ありがとう！"
   const text = (body.text as string) || ''
   const user_id = body.user_id as string
   const user_name = body.user_name as string
 
-  const m = text.match(/<@([A-Z0-9]+)>\s+(\d+)\s*(.*)/s)
-  if (!m) {
-    res.setHeader('Content-Type', 'application/json')
-    res.status(200).json({ response_type: 'ephemeral', text: '使い方: /thanks @相手 コイン数 メッセージ' })
-    return
+  // Try pattern with coins first: @user coins message
+  let m = text.match(/<@([A-Z0-9]+)>\s+(\d+)\s*(.*)/s)
+  let targetSlackId: string, coins: number, message: string
+  
+  if (m) {
+    // Pattern with explicit coins
+    targetSlackId = m[1]
+    coins = parseInt(m[2], 10)
+    message = m[3] || ''
+  } else {
+    // Try pattern without coins: @user message (default to 5 coins)
+    m = text.match(/<@([A-Z0-9]+)>\s*(.*)/s)
+    if (!m) {
+      res.setHeader('Content-Type', 'application/json')
+      res.status(200).json({ response_type: 'ephemeral', text: '使い方: /thanks @相手 [コイン数] メッセージ\n例: /thanks @田中さん ありがとう！\n例: /thanks @田中さん 10 いつもありがとう！' })
+      return
+    }
+    targetSlackId = m[1]
+    coins = 5 // デフォルト5コイン
+    message = m[2] || ''
   }
-
-  const targetSlackId = m[1]
-  const coins = parseInt(m[2], 10)
-  const message = m[3] || ''
 
   if (isNaN(coins) || coins <= 0) {
     res.setHeader('Content-Type', 'application/json')
