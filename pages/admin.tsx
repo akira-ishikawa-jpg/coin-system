@@ -54,6 +54,7 @@ export default function AdminPage() {
   // Bonus grant state
   const [showBonusGrant, setShowBonusGrant] = useState(false)
   const [bonusEmployeeId, setBonusEmployeeId] = useState('')
+  const [bonusEmployeeName, setBonusEmployeeName] = useState('')
   const [bonusCoins, setBonusCoins] = useState('')
   const [bonusReason, setBonusReason] = useState('')
   const [bonusLoading, setBonusLoading] = useState(false)
@@ -63,7 +64,7 @@ export default function AdminPage() {
   useEffect(() => { if (activeTab === 'audit') loadAuditLogs() }, [activeTab, auditPage, auditFilterAction, auditFilterUser])
 
   // 排他的にセクションを開くための関数
-  function openExclusiveSection(section: 'addUser' | 'bulkUpload' | 'exportOptions' | 'bonusGrant') {
+  function openExclusiveSection(section: 'addUser' | 'bulkUpload' | 'exportOptions') {
     // 全てを一度閉じる
     setShowAddUser(false)
     setShowBulkUpload(false)
@@ -81,18 +82,14 @@ export default function AdminPage() {
       case 'exportOptions':
         setShowExportOptions(true)
         break
-      case 'bonusGrant':
-        setShowBonusGrant(true)
-        break
     }
   }
 
-  function toggleSection(section: 'addUser' | 'bulkUpload' | 'exportOptions' | 'bonusGrant') {
+  function toggleSection(section: 'addUser' | 'bulkUpload' | 'exportOptions') {
     const isCurrentlyOpen = {
       addUser: showAddUser,
       bulkUpload: showBulkUpload,
-      exportOptions: showExportOptions,
-      bonusGrant: showBonusGrant
+      exportOptions: showExportOptions
     }[section]
     
     if (isCurrentlyOpen) {
@@ -223,9 +220,15 @@ export default function AdminPage() {
       if (res.ok) {
         setBonusMessage(result.message || 'ボーナスコインを付与しました')
         setBonusEmployeeId('')
+        setBonusEmployeeName('')
         setBonusCoins('')
         setBonusReason('')
         load() // Refresh data
+        // Close the form after 2 seconds
+        setTimeout(() => {
+          setShowBonusGrant(false)
+          setBonusMessage('')
+        }, 2000)
       } else {
         setBonusMessage(result.error || 'エラーが発生しました')
       }
@@ -234,6 +237,21 @@ export default function AdminPage() {
     }
 
     setBonusLoading(false)
+  }
+
+  function startBonusGrant(employeeId: string, employeeName: string) {
+    // Close other sections first
+    setShowAddUser(false)
+    setShowBulkUpload(false)
+    setShowExportOptions(false)
+    
+    // Set up bonus grant form
+    setBonusEmployeeId(employeeId)
+    setBonusEmployeeName(employeeName)
+    setBonusCoins('')
+    setBonusReason('')
+    setBonusMessage('')
+    setShowBonusGrant(true)
   }
 
   async function exportCsv() {
@@ -558,12 +576,6 @@ export default function AdminPage() {
                 {showBulkUpload ? '閉じる' : 'CSV一括登録'}
               </button>
               <button 
-                onClick={() => toggleSection('bonusGrant')} 
-                className="bg-amber-600 text-white px-6 py-3 rounded-md font-bold hover:bg-amber-700 hover:scale-105 hover:shadow-lg transition-all duration-200"
-              >
-                🎁 {showBonusGrant ? '閉じる' : 'ボーナス付与'}
-              </button>
-              <button 
                 onClick={() => toggleSection('exportOptions')} 
                 className="bg-teal-600 text-white px-6 py-3 rounded-md font-bold hover:bg-teal-700 hover:scale-105 hover:shadow-lg transition-all duration-200"
               >
@@ -708,22 +720,15 @@ export default function AdminPage() {
             {/* Bonus Grant Form */}
             {showBonusGrant && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-8">
-                <h3 className="text-xl font-bold mb-4 text-amber-900">🎁 ボーナスコイン付与</h3>
+                <h3 className="text-xl font-bold mb-4 text-amber-900">
+                  🎁 {bonusEmployeeName} さんにボーナスコイン付与
+                </h3>
                 <div className="grid grid-cols-1 gap-4">
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">対象者</label>
-                    <select
-                      value={bonusEmployeeId}
-                      onChange={(e) => setBonusEmployeeId(e.target.value)}
-                      className="w-full border border-amber-300 p-3 rounded-md focus:outline-none focus:border-amber-500"
-                    >
-                      <option value="">選択してください</option>
-                      {rows.map(r => (
-                        <option key={r.employee_id} value={r.employee_id}>
-                          {r.name} ({r.email})
-                        </option>
-                      ))}
-                    </select>
+                    <div className="p-3 bg-white border border-amber-300 rounded-md text-gray-700 font-semibold">
+                      {bonusEmployeeName}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">付与コイン数</label>
@@ -746,13 +751,21 @@ export default function AdminPage() {
                       className="w-full border border-amber-300 p-3 rounded-md focus:outline-none focus:border-amber-500 h-20"
                     />
                   </div>
-                  <button
-                    onClick={grantBonus}
-                    disabled={bonusLoading || !bonusEmployeeId || !bonusCoins || !bonusReason}
-                    className="w-full bg-amber-600 text-white px-4 py-3 rounded-md font-bold hover:bg-amber-700 transition disabled:opacity-50"
-                  >
-                    {bonusLoading ? '付与中...' : '🎁 ボーナスコインを付与'}
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={grantBonus}
+                      disabled={bonusLoading || !bonusCoins || !bonusReason}
+                      className="flex-1 bg-amber-600 text-white px-4 py-3 rounded-md font-bold hover:bg-amber-700 transition disabled:opacity-50"
+                    >
+                      {bonusLoading ? '付与中...' : '🎁 ボーナスコインを付与'}
+                    </button>
+                    <button
+                      onClick={() => setShowBonusGrant(false)}
+                      className="px-4 py-3 border border-amber-300 text-amber-700 rounded-md font-bold hover:bg-amber-100 transition"
+                    >
+                      キャンセル
+                    </button>
+                  </div>
                 </div>
                 {bonusMessage && (
                   <div className={`mt-4 p-4 rounded-md ${
@@ -941,13 +954,22 @@ export default function AdminPage() {
                         <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_sent}</td>
                         <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_likes || 0}</td>
                         <td className="p-3 text-center">
-                          <button
-                            onClick={() => handleDeleteUser(r.employee_id, r.name)}
-                            disabled={deletingId === r.employee_id}
-                            className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition disabled:opacity-50"
-                          >
-                            {deletingId === r.employee_id ? '削除中...' : '削除'}
-                          </button>
+                          <div className="flex gap-2 justify-center">
+                            <button
+                              onClick={() => startBonusGrant(r.employee_id, r.name)}
+                              className="bg-amber-500 text-white px-3 py-1 rounded text-sm hover:bg-amber-600 transition font-bold"
+                              title={`${r.name}にボーナスコインを付与`}
+                            >
+                              🎁
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(r.employee_id, r.name)}
+                              disabled={deletingId === r.employee_id}
+                              className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition disabled:opacity-50"
+                            >
+                              {deletingId === r.employee_id ? '削除中...' : '削除'}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
