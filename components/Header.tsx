@@ -6,6 +6,7 @@ export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
   const [userName, setUserName] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     loadUserInfo()
@@ -14,7 +15,10 @@ export default function Header() {
   async function loadUserInfo() {
     try {
       const { data } = await supabase.auth.getUser()
-      if (!data.user?.email) return
+      if (!data.user?.email) {
+        setIsLoading(false)
+        return
+      }
 
       setUserEmail(data.user.email)
       
@@ -30,6 +34,8 @@ export default function Header() {
       }
     } catch (error) {
       console.error('ユーザー情報取得エラー:', error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -68,10 +74,20 @@ export default function Header() {
             </nav>
             
             {/* ログイン状態表示 */}
-            {userName && (
+            {isLoading ? (
+              <div className="flex items-center gap-2 px-3 py-1 bg-teal-50 rounded-md border border-teal-200 animate-pulse">
+                <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                <div className="w-16 h-4 bg-gray-300 rounded"></div>
+              </div>
+            ) : userName ? (
               <div className="flex items-center gap-2 px-3 py-1 bg-teal-50 rounded-md border border-teal-200">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span className="text-sm font-medium text-teal-700">{userName}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-md border border-gray-200">
+                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                <span className="text-sm font-medium text-gray-500">ゲスト</span>
               </div>
             )}
           </div>
@@ -81,10 +97,20 @@ export default function Header() {
         {isOpen && (
           <div className="md:hidden mt-4 pb-4 border-t border-slate-200 pt-4">
             {/* モバイル用ログイン状態表示 */}
-            {userName && (
+            {isLoading ? (
+              <div className="flex items-center gap-2 px-3 py-2 bg-teal-50 rounded-md border border-teal-200 mb-3 animate-pulse">
+                <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                <div className="w-20 h-4 bg-gray-300 rounded"></div>
+              </div>
+            ) : userName ? (
               <div className="flex items-center gap-2 px-3 py-2 bg-teal-50 rounded-md border border-teal-200 mb-3">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span className="text-sm font-medium text-teal-700">ログイン中: {userName}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-md border border-gray-200 mb-3">
+                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                <span className="text-sm font-medium text-gray-500">未ログイン</span>
               </div>
             )}
             
