@@ -6,7 +6,11 @@ type Employee = { id: string; name: string; slack_id?: string }
 
 export default function SendPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
   const [receiverId, setReceiverId] = useState('')
+  const [receiverName, setReceiverName] = useState('')
+  const [showDropdown, setShowDropdown] = useState(false)
   const [coins, setCoins] = useState<number>(10)
   const [message, setMessage] = useState('')
   const [selectedStamps, setSelectedStamps] = useState<string[]>([])
@@ -18,11 +22,47 @@ export default function SendPage() {
   useEffect(() => {
     fetchEmployees()
     fetchRemaining()
+    
+    // Click outside to close dropdown
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('.employee-search')) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
   }, [])
 
   async function fetchEmployees() {
-    const { data } = await supabase.from('employees').select('id,name')
-    setEmployees((data as any) || [])
+    const { data } = await supabase.from('employees').select('id,name').order('name')
+    const emps = (data as any) || []
+    setEmployees(emps)
+    setFilteredEmployees(emps)
+  }
+
+  function handleSearchChange(query: string) {
+    setSearchQuery(query)
+    setReceiverName(query)
+    setShowDropdown(true)
+    
+    if (!query.trim()) {
+      setFilteredEmployees(employees)
+      setReceiverId('')
+      return
+    }
+    
+    const filtered = employees.filter(emp => 
+      emp.name.toLowerCase().includes(query.toLowerCase())
+    )
+    setFilteredEmployees(filtered)
+  }
+
+  function selectEmployee(emp: Employee) {
+    setReceiverId(emp.id)
+    setReceiverName(emp.name)
+    setSearchQuery(emp.name)
+    setShowDropdown(false)
   }
 
   async function fetchRemaining() {
@@ -92,6 +132,8 @@ export default function SendPage() {
     if (res.ok) {
       setStatus('贈呈しました')
       setReceiverId('')
+      setReceiverName('')
+      setSearchQuery('')
       setCoins(10)
       setMessage('')
       setSelectedStamps([])
@@ -121,19 +163,35 @@ export default function SendPage() {
             )}
             
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">贈呈先</label>
-                <select 
-                  className="w-full border border-slate-300 p-3 rounded-md focus:outline-none focus:border-blue-500 transition" 
-                  value={receiverId} 
-                  onChange={(e) => setReceiverId(e.target.value)}
+              <div className="relative employee-search">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">贈呈先（検索可能）</label>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onFocus={() => setShowDropdown(true)}
+                  className="w-full border border-slate-300 p-3 rounded-md focus:outline-none focus:border-teal-500 transition"
+                  placeholder="名前を入力して検索..."
+                  autoComplete="off"
                   required
-                >
-                  <option value="">選択してください</option>
-                  {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>{emp.name}</option>
-                  ))}
-                </select>
+                />
+                {showDropdown && filteredEmployees.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                    {filteredEmployees.map((emp) => (
+                      <button
+                        key={emp.id}
+                        type="button"
+                        onClick={() => selectEmployee(emp)}
+                        className="w-full text-left px-4 py-2 hover:bg-teal-50 transition border-b border-slate-100 last:border-b-0"
+                      >
+                        {emp.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {searchQuery && filteredEmployees.length === 0 && (
+                  <p className="text-sm text-red-600 mt-2">該当する従業員が見つかりません</p>
+                )}
               </div>
 
               <div>
@@ -210,7 +268,7 @@ export default function SendPage() {
 
               <button 
                 type="submit"
-                disabled={(remaining !== null && coins > remaining) || coins > 100 || !message.trim()}
+                disabled={(remaining !== null && coins > remaining) || coins > 100 || !message.trim() || !receiverId}
                 className="w-full bg-teal-600 text-white px-4 py-3 rounded-md font-bold hover:bg-teal-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 贈呈する

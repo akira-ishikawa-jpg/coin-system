@@ -25,64 +25,77 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { data: emp } = await supabase.from('employees').select('id,role').eq('email', userEmail).limit(1).maybeSingle()
   if (!emp || emp.role !== 'admin') return res.status(403).json({ error: 'Forbidden' })
 
-  // default to current month
+  // Parse date range parameters
   const now = new Date()
-  const y = Number(req.query.year) || now.getFullYear()
-  const m = Number(req.query.month) || (now.getMonth() + 1)
+  const startYear = Number(req.query.startYear) || now.getFullYear()
+  const startMonth = Number(req.query.startMonth) || (now.getMonth() + 1)
+  const endYear = Number(req.query.endYear) || now.getFullYear()
+  const endMonth = Number(req.query.endMonth) || (now.getMonth() + 1)
   const department = req.query.department as string | undefined
   const sortBy = (req.query.sortBy as string) || 'received' // received | sent | likes
   const minCoins = Number(req.query.minCoins) || 0
 
-  // Aggregate: employee info + total received + total sent + total likes
-  const { data: statsData } = await supabase.rpc('aggregate_monthly_stats', { year_in: y, month_in: m })
+  // Calculate date range
+  const startDate = `${startYear}-${String(startMonth).padStart(2, '0')}-01`
+  const endDate = (() => {
+    const nextMonth = endMonth === 12 ? 1 : endMonth + 1
+    const nextYear = endMonth === 12 ? endYear + 1 : endYear
+    return `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`
+  })()
+
+  // Fetch all employees
+  const { data: employees } = await supabase.from('employees').select('id,name,email,department')
   
   let rows: any[] = []
-  if (statsData && Array.isArray(statsData)) {
-    rows = statsData as any[]
-  } else {
-    // Fallback: manual aggregation
-    const { data: employees } = await supabase.from('employees').select('id,name,email,department')
-    
-    const stats = await Promise.all(
-      (employees || []).map(async (emp: any) => {
-        // Total received
-        const { data: recv } = await supabase
-          .from('coin_transactions')
-          .select('coins')
-          .eq('receiver_id', emp.id)
-          .gte('created_at', `${y}-${String(m).padStart(2, '0')}-01`)
-          .lt('created_at', `${y}-${String(m + 1).padStart(2, '0')}-01`)
-        
-        // Total sent
-        const { data: sent } = await supabase
-          .from('coin_transactions')
-          .select('coins')
-          .eq('sender_id', emp.id)
-          .gte('created_at', `${y}-${String(m).padStart(2, '0')}-01`)
-          .lt('created_at', `${y}-${String(m + 1).padStart(2, '0')}-01`)
-        
-        // Total likes received (on transactions where this employee is receiver)
-        const { data: likesData } = await supabase
-          .from('transaction_likes')
-          .select('id, coin_transactions!inner(receiver_id, created_at)')
-          .eq('coin_transactions.receiver_id', emp.id)
-          .gte('coin_transactions.created_at', `${y}-${String(m).padStart(2, '0')}-01`)
-          .lt('coin_transactions.created_at', `${y}-${String(m + 1).padStart(2, '0')}-01`)
-        
-        return {
-          employee_id: emp.id,
-          name: emp.name,
-          email: emp.email,
-          department: emp.department,
-          total_received: (recv || []).reduce((s: any, r: any) => s + (r.coins || 0), 0),
-          total_sent: (sent || []).reduce((s: any, r: any) => s + (r.coins || 0), 0),
-          total_likes: (likesData || []).length
-        }
-      })
-    )
-    
-    rows = stats.filter(s => s.total_received > 0 || s.total_sent > 0)
-  }
+  
+  // Manual aggregation for date range
+  const stats = await Promise.all(
+    (employees || []).map(async (emp: any) => {
+      // Total received in date range
+      const { data: recv } = await supabase
+        .from('coin_transactions')
+        .select('coins')
+        .eq('receiver_id', emp.id)
+        .gte('created_at', startDate)
+        .lt('created_at', endDate)
+      
+      // Total sent in date range
+      const { data: sent } = await supabase
+        .from('coin_transactions')
+        .select('coins')
+        .eq('sender_id', emp.id)
+        .gte('created_at', startDate)
+        .lt('created_at', endDate)
+      
+      // Total likes received in date range
+      const { data: likesReceived } = await supabase
+        .from('transaction_likes')
+        .select('id, coin_transactions!inner(receiver_id, created_at)')
+        .eq('coin_transactions.receiver_id', emp.id)
+        .gte('coin_transactions.created_at', startDate)
+        .lt('coin_transactions.created_at', endDate)
+      
+      // Total likes given in date range
+      const { data: likesGiven } = await supabase
+        .from('transaction_likes')
+        .select('id, coin_transactions!inner(sender_id, created_at)')
+        .eq('coin_transactions.sender_id', emp.id)
+        .gte('coin_transactions.created_at', startDate)
+        .lt('coin_transactions.created_at', endDate)
+      
+      return {
+        employee_id: emp.id,
+        name: emp.name,
+        email: emp.email,
+        department: emp.department,
+        total_received: (recv || []).reduce((s: any, r: any) => s + (r.coins || 0), 0),
+        total_sent: (sent || []).reduce((s: any, r: any) => s + (r.coins || 0), 0),
+        total_likes: (likesReceived || []).length + (likesGiven || []).length
+      }
+    })
+  )
+  
+  rows = stats
 
   // Apply filters
   if (department) {
@@ -118,6 +131,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const csv = lines.join('\n')
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8')
-  res.setHeader('Content-Disposition', `attachment; filename="monthly_summary_${y}_${String(m).padStart(2,'0')}.csv"`)
+  res.setHeader('Content-Disposition', `attachment; filename="summary_${startYear}${String(startMonth).padStart(2,'0')}-${endYear}${String(endMonth).padStart(2,'0')}.csv"`)
   res.status(200).send(csv)
 }

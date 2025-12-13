@@ -31,6 +31,10 @@ export default function AdminPage() {
   const [exportDepartment, setExportDepartment] = useState('')
   const [exportSortBy, setExportSortBy] = useState('received')
   const [exportMinCoins, setExportMinCoins] = useState(0)
+  const [exportStartYear, setExportStartYear] = useState(new Date().getFullYear())
+  const [exportStartMonth, setExportStartMonth] = useState(new Date().getMonth() + 1)
+  const [exportEndYear, setExportEndYear] = useState(new Date().getFullYear())
+  const [exportEndMonth, setExportEndMonth] = useState(new Date().getMonth() + 1)
 
   useEffect(() => { load() }, [])
 
@@ -84,6 +88,10 @@ export default function AdminPage() {
 
     // Build query string with filters
     const params = new URLSearchParams()
+    params.append('startYear', exportStartYear.toString())
+    params.append('startMonth', exportStartMonth.toString())
+    params.append('endYear', exportEndYear.toString())
+    params.append('endMonth', exportEndMonth.toString())
     if (exportDepartment) params.append('department', exportDepartment)
     params.append('sortBy', exportSortBy)
     if (exportMinCoins > 0) params.append('minCoins', exportMinCoins.toString())
@@ -417,6 +425,61 @@ export default function AdminPage() {
             {showExportOptions && (
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 mb-8">
                 <h3 className="text-xl font-bold mb-4 text-slate-900">CSVエクスポート条件指定</h3>
+                
+                {/* 期間指定 */}
+                <div className="mb-4 p-4 bg-white border border-slate-200 rounded-md">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">期間指定</label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-2">開始</label>
+                      <div className="flex gap-2">
+                        <select
+                          value={exportStartYear}
+                          onChange={(e) => setExportStartYear(Number(e.target.value))}
+                          className="border border-slate-300 p-2 rounded-md focus:outline-none focus:border-teal-500"
+                        >
+                          {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                            <option key={year} value={year}>{year}年</option>
+                          ))}
+                        </select>
+                        <select
+                          value={exportStartMonth}
+                          onChange={(e) => setExportStartMonth(Number(e.target.value))}
+                          className="border border-slate-300 p-2 rounded-md focus:outline-none focus:border-teal-500"
+                        >
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                            <option key={month} value={month}>{month}月</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-2">終了</label>
+                      <div className="flex gap-2">
+                        <select
+                          value={exportEndYear}
+                          onChange={(e) => setExportEndYear(Number(e.target.value))}
+                          className="border border-slate-300 p-2 rounded-md focus:outline-none focus:border-teal-500"
+                        >
+                          {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                            <option key={year} value={year}>{year}年</option>
+                          ))}
+                        </select>
+                        <select
+                          value={exportEndMonth}
+                          onChange={(e) => setExportEndMonth(Number(e.target.value))}
+                          className="border border-slate-300 p-2 rounded-md focus:outline-none focus:border-teal-500"
+                        >
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                            <option key={month} value={month}>{month}月</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* その他のフィルター */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">部署フィルター</label>
