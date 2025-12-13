@@ -7,7 +7,7 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
+  if (req.method !== 'PUT') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
@@ -24,66 +24,57 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const userEmail = authData.user.email
-  const { data: emp } = await supabase
+  const { data: currentUser } = await supabase
     .from('employees')
     .select('id,role')
     .eq('email', userEmail)
     .limit(1)
     .maybeSingle()
 
-  if (!emp || emp.role !== 'admin') {
+  if (!currentUser || currentUser.role !== 'admin') {
     return res.status(403).json({ error: 'Forbidden: Admin access required' })
   }
 
   // Get request body
-  const { name, email, department, password, slack_id, role = 'user' } = req.body
+  const { employee_id, new_role } = req.body
 
-  if (!name || !email || !department || !password) {
-    return res.status(400).json({ error: 'Missing required fields: name, email, department, password' })
-  }
-
-  if (password.length < 6) {
-    return res.status(400).json({ error: 'Password must be at least 6 characters' })
+  if (!employee_id || !new_role) {
+    return res.status(400).json({ error: 'Missing required fields: employee_id, new_role' })
   }
 
   // Validate role
-  if (role && !['user', 'admin'].includes(role)) {
+  if (!['user', 'admin'].includes(new_role)) {
     return res.status(400).json({ error: 'Invalid role. Must be "user" or "admin"' })
   }
 
+  // Prevent self-role change to non-admin (to avoid lockout)
+  if (employee_id === currentUser.id && new_role !== 'admin') {
+    return res.status(400).json({ error: 'Cannot remove admin role from yourself' })
+  }
+
   try {
-    // Create user in Supabase Auth using admin API
-    const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true // Auto-confirm email
-    })
-
-    if (createError) {
-      return res.status(400).json({ error: 'Failed to create auth user: ' + createError.message })
-    }
-
-    // Create employee record
-    const { error: empError } = await supabase
+    // Update user role
+    const { error: updateError } = await supabase
       .from('employees')
-      .insert({
-        id: newUser.user.id,
-        name,
-        email,
-        department,
-        role: role || 'user',
-        slack_id: slack_id || null
-      })
+      .update({ role: new_role })
+      .eq('id', employee_id)
 
-    if (empError) {
-      // If employee creation fails, try to delete the auth user
-      await supabase.auth.admin.deleteUser(newUser.user.id)
-      return res.status(400).json({ error: 'Failed to create employee record: ' + empError.message })
+    if (updateError) {
+      return res.status(400).json({ error: 'Failed to update user role: ' + updateError.message })
     }
+
+    // Get updated user info
+    const { data: updatedUser } = await supabase
+      .from('employees')
+      .select('id,name,email,role')
+      .eq('id', employee_id)
+      .limit(1)
+      .maybeSingle()
 
     return res.status(200).json({ 
       success: true, 
-      user: { id: newUser.user.id, email, name, department }
+      user: updatedUser,
+      message: `権限を${new_role === 'admin' ? '管理者' : '一般ユーザー'}に変更しました`
     })
   } catch (error: any) {
     return res.status(500).json({ error: 'Internal server error: ' + error.message })

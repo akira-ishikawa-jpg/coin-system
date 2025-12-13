@@ -14,16 +14,19 @@ export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
   const [userName, setUserName] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     // キャッシュされたユーザー情報を確認
     const cachedUserName = sessionStorage.getItem('cached_user_name')
     const cachedUserEmail = sessionStorage.getItem('cached_user_email')
+    const cachedUserRole = sessionStorage.getItem('cached_user_role')
     
     if (cachedUserName && cachedUserEmail) {
       setUserName(cachedUserName)
       setUserEmail(cachedUserEmail)
+      setUserRole(cachedUserRole)
       setIsLoading(false)
     } else {
       setIsLoading(true)
@@ -59,6 +62,7 @@ export default function Header() {
         // キャッシュをクリア
         sessionStorage.removeItem('cached_user_name')
         sessionStorage.removeItem('cached_user_email')
+        sessionStorage.removeItem('cached_user_role')
         return
       }
 
@@ -68,15 +72,17 @@ export default function Header() {
       
       const { data: emp } = await supabase
         .from('employees')
-        .select('name')
+        .select('name, role')
         .eq('email', data.user.email)
         .limit(1)
         .maybeSingle()
       
       if (emp) {
         setUserName(emp.name)
+        setUserRole(emp.role)
         // キャッシュに保存
         sessionStorage.setItem('cached_user_name', emp.name)
+        sessionStorage.setItem('cached_user_role', emp.role || 'user')
       }
     } catch (error) {
       console.error('ユーザー情報取得エラー:', error)
@@ -86,7 +92,7 @@ export default function Header() {
   }
 
   return (
-    <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+    <header className="bg-white border-b border-slate-200 fixed top-0 left-0 right-0 z-50 shadow-sm">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <Link href="/" className="font-bold text-slate-900 text-lg tracking-tight">
@@ -115,7 +121,9 @@ export default function Header() {
               <Link href="/thanks" className="hover:text-teal-600 transition font-medium">みんなの感謝</Link>
               <Link href="/mypage" className="hover:text-teal-600 transition font-medium">マイページ</Link>
               <Link href="/ranking" className="hover:text-teal-600 transition font-medium">ランキング</Link>
-              <Link href="/admin" className="hover:text-teal-600 transition font-medium">管理</Link>
+              {userRole === 'admin' && (
+                <Link href="/admin" className="hover:text-teal-600 transition font-medium">管理</Link>
+              )}
               <Link href="/help" className="hover:text-teal-600 transition font-medium">ヘルプ</Link>
             </nav>
             
@@ -189,13 +197,15 @@ export default function Header() {
               >
                 ランキング
               </Link>
-              <Link 
-                href="/admin" 
-                className="text-slate-700 hover:text-teal-600 transition font-medium py-2"
-                onClick={() => setIsOpen(false)}
-              >
-                管理
-              </Link>
+              {userRole === 'admin' && (
+                <Link 
+                  href="/admin" 
+                  className="text-slate-700 hover:text-teal-600 transition font-medium py-2"
+                  onClick={() => setIsOpen(false)}
+                >
+                  管理
+                </Link>
+              )}
               <Link 
                 href="/help" 
                 className="text-slate-700 hover:text-teal-600 transition font-medium py-2"

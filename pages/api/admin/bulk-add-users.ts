@@ -12,6 +12,7 @@ type UserRow = {
   department: string
   password: string
   slack_id?: string
+  role?: string
 }
 
 type Result = {
@@ -85,7 +86,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       continue
     }
 
-    const [name, email, department, password, slack_id] = cols
+    const [name, email, department, password, slack_id, role] = cols
 
     // Validation
     if (!name) {
@@ -102,6 +103,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     if (!password || password.length < 6) {
       results.push({ success: false, row: rowNum, email, error: 'パスワードは6文字以上必要です' })
+      continue
+    }
+
+    // Validate role if provided
+    if (role && !['user', 'admin'].includes(role)) {
+      results.push({ success: false, row: rowNum, email, error: 'roleは"user"または"admin"である必要があります' })
       continue
     }
 
@@ -140,7 +147,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           name,
           email,
           department,
-          role: 'user',
+          role: role || 'user',
           slack_id: slack_id || null
         })
 

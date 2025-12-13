@@ -9,6 +9,7 @@ export default function AdminPage() {
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(false)
   const [unauth, setUnauth] = useState(false)
+  const [currentUser, setCurrentUser] = useState<{role: string} | null>(null)
   
   // User addition form state
   const [showAddUser, setShowAddUser] = useState(false)
@@ -17,9 +18,11 @@ export default function AdminPage() {
   const [newDepartment, setNewDepartment] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [newSlackId, setNewSlackId] = useState('')
+  const [newRole, setNewRole] = useState('user')
   const [addMessage, setAddMessage] = useState('')
   const [addLoading, setAddLoading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null)
 
   // CSV bulk upload state
   const [showBulkUpload, setShowBulkUpload] = useState(false)
@@ -60,6 +63,9 @@ export default function AdminPage() {
     // check admin role
     const { data: emp } = await supabase.from('employees').select('id,role').eq('email', user.email).limit(1).maybeSingle()
     if (!emp || emp.role !== 'admin') { setUnauth(true); setLoading(false); return }
+    
+    // Set current user info
+    setCurrentUser({ role: emp.role })
 
     const now = new Date()
     const y = now.getFullYear()
@@ -71,10 +77,12 @@ export default function AdminPage() {
 
     // aggregate monthly stats (received, sent, likes)
     const { data } = await supabase.rpc('aggregate_monthly_stats', { year_in: y, month_in: m })
-    if (data) { setRows((data as any) || []) }
-    else {
+    // RPC関数でrole情報が取得できない場合はフォールバック処理を使用
+    if (data && data.length > 0 && data[0].role !== undefined) { 
+      setRows((data as any) || []) 
+    } else {
       // fallback query
-      const { data: employees } = await supabase.from('employees').select('id,name,email,department')
+      const { data: employees } = await supabase.from('employees').select('id,name,email,department,role')
       const stats = await Promise.all(
         (employees || []).map(async (emp: any) => {
           const { data: recv } = await supabase.from('coin_transactions').select('coins').eq('receiver_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`)
@@ -85,6 +93,7 @@ export default function AdminPage() {
             name: emp.name,
             email: emp.email,
             department: emp.department,
+            role: emp.role,
             total_received: (recv || []).reduce((s: any, r: any) => s + (r.coins || 0), 0),
             total_sent: (sent || []).reduce((s: any, r: any) => s + (r.coins || 0), 0),
             total_likes: (likes || []).length
@@ -182,7 +191,7 @@ export default function AdminPage() {
   }
 
   function downloadSampleCsv() {
-    const sample = 'name,email,department,password,slack_id\n山田太郎,yamada@example.com,営業,password123,U01234ABCDE\n田中花子,tanaka@example.com,総務,password456,'
+    const sample = 'name,email,department,password,slack_id,role\n山田太郎,yamada@example.com,営業,password123,U01234ABCDE,user\n田中花子,tanaka@example.com,総務,password456,,admin'
     const blob = new Blob([sample], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -261,7 +270,8 @@ export default function AdminPage() {
           email: newEmail,
           department: newDepartment,
           password: newPassword,
-          slack_id: newSlackId || null
+          slack_id: newSlackId || null,
+          role: newRole
         })
       })
 
@@ -274,6 +284,7 @@ export default function AdminPage() {
         setNewDepartment('')
         setNewPassword('')
         setNewSlackId('')
+        setNewRole('user')
         setShowAddUser(false)
         // Reload the user list
         await load()
@@ -327,6 +338,51 @@ export default function AdminPage() {
     }
   }
 
+  async function handleRoleChange(employeeId: string, currentRole: string, userName: string) {
+    const newRole = currentRole === 'admin' ? 'user' : 'admin'
+    const roleText = newRole === 'admin' ? '管理者' : '一般ユーザー'
+    
+    if (!confirm(`「${userName}」の権限を${roleText}に変更しますか？`)) {
+      return
+    }
+
+    setUpdatingRoleId(employeeId)
+
+    try {
+      const sessionRes = await supabase.auth.getSession()
+      const token = (sessionRes as any)?.data?.session?.access_token
+      if (!token) {
+        alert('認証エラー')
+        return
+      }
+
+      const res = await fetch('/api/admin/update-user-role', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          employee_id: employeeId,
+          new_role: newRole
+        })
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        alert('✅ ' + data.message)
+        await load() // Reload the user list
+      } else {
+        alert('❌ ' + (data.error || '権限変更に失敗しました'))
+      }
+    } catch (error: any) {
+      alert('❌ エラー: ' + error.message)
+    } finally {
+      setUpdatingRoleId(null)
+    }
+  }
+
   if (unauth) return (
     <>
       <Header />
@@ -344,7 +400,7 @@ export default function AdminPage() {
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-gray-50 py-16 px-4">
+      <div className="min-h-screen bg-gray-50 pt-24 py-16 px-4">
         <div className="container mx-auto max-w-5xl">
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             <div className="bg-teal-600 text-white p-8 text-center">
@@ -456,6 +512,17 @@ export default function AdminPage() {
                       placeholder="U01234ABCDE"
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">権限</label>
+                    <select
+                      value={newRole}
+                      onChange={(e) => setNewRole(e.target.value)}
+                      className="w-full border border-slate-300 p-3 rounded-md focus:outline-none focus:border-teal-500"
+                    >
+                      <option value="user">一般ユーザー</option>
+                      <option value="admin">管理者</option>
+                    </select>
+                  </div>
                 </div>
                 <button
                   onClick={handleAddUser}
@@ -488,7 +555,7 @@ export default function AdminPage() {
                     📥 サンプルCSVをダウンロード
                   </button>
                   <p className="text-sm text-gray-600 mt-2">
-                    フォーマット: name,email,department,password,slack_id（slack_idは任意）
+                    フォーマット: name,email,department,password,slack_id,role（slack_id、roleは任意）
                   </p>
                 </div>
                 <input
@@ -656,6 +723,7 @@ export default function AdminPage() {
                       <th className="p-3 text-left font-bold text-gray-700">氏名</th>
                       <th className="p-3 text-left font-bold text-gray-700">メール</th>
                       <th className="p-3 text-left font-bold text-gray-700">部署</th>
+                      <th className="p-3 text-left font-bold text-gray-700">権限</th>
                       <th className="p-3 text-right font-bold text-gray-700">月次受取合計</th>
                       <th className="p-3 text-right font-bold text-gray-700">月次贈呈合計</th>
                       <th className="p-3 text-right font-bold text-gray-700">月次いいね合計</th>
@@ -668,6 +736,32 @@ export default function AdminPage() {
                         <td className="p-3 text-gray-800 font-bold">{r.name}</td>
                         <td className="p-3 text-gray-600 text-xs">{r.email}</td>
                         <td className="p-3 text-gray-600">{r.department}</td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            {currentUser?.role === 'admin' ? (
+                              <button
+                                onClick={() => handleRoleChange(r.employee_id, (r as any).role, r.name)}
+                                disabled={updatingRoleId === r.employee_id}
+                                className={`px-2 py-1 rounded-full text-xs font-semibold transition-all duration-200 hover:scale-105 disabled:opacity-50 cursor-pointer ${
+                                  (r as any).role === 'admin' 
+                                    ? 'bg-red-100 text-red-800 hover:bg-red-200' 
+                                    : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                                }`}
+                                title={`クリックで${(r as any).role === 'admin' ? '一般ユーザー' : '管理者'}に変更`}
+                              >
+                                {updatingRoleId === r.employee_id ? '変更中...' : (r as any).role === 'admin' ? '管理者' : '一般'}
+                              </button>
+                            ) : (
+                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                (r as any).role === 'admin' 
+                                  ? 'bg-red-100 text-red-800' 
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {(r as any).role === 'admin' ? '管理者' : '一般'}
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_received}</td>
                         <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_sent}</td>
                         <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_likes || 0}</td>

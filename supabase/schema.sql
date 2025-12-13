@@ -42,12 +42,13 @@ CREATE INDEX IF NOT EXISTS idx_transaction_likes_employee ON transaction_likes(e
 
 -- 2. 新しいRPC関数（受取・贈呈・いいね数を集計）
 CREATE OR REPLACE FUNCTION aggregate_monthly_stats(year_in int, month_in int)
-RETURNS TABLE(employee_id uuid, name text, email text, department text, total_received int, total_sent int, total_likes int) AS $$
+RETURNS TABLE(employee_id uuid, name text, email text, department text, role text, total_received int, total_sent int, total_likes int) AS $$
   SELECT
     e.id,
     e.name,
     e.email,
     e.department,
+    e.role,
     COALESCE(SUM(CASE WHEN ct_recv.receiver_id = e.id THEN ct_recv.coins ELSE 0 END), 0) AS total_received,
     COALESCE(SUM(CASE WHEN ct_sent.sender_id = e.id THEN ct_sent.coins ELSE 0 END), 0) AS total_sent,
     COALESCE((
@@ -67,7 +68,7 @@ RETURNS TABLE(employee_id uuid, name text, email text, department text, total_re
     ON ct_sent.sender_id = e.id
     AND ct_sent.created_at >= make_date(year_in, month_in, 1)
     AND ct_sent.created_at < (make_date(year_in, month_in, 1) + INTERVAL '1 month')
-  GROUP BY e.id, e.name, e.email, e.department
+  GROUP BY e.id, e.name, e.email, e.department, e.role
   HAVING COALESCE(SUM(CASE WHEN ct_recv.receiver_id = e.id THEN ct_recv.coins ELSE 0 END), 0) > 0
       OR COALESCE(SUM(CASE WHEN ct_sent.sender_id = e.id THEN ct_sent.coins ELSE 0 END), 0) > 0;
 $$ LANGUAGE sql STABLE;
@@ -129,12 +130,13 @@ CREATE INDEX IF NOT EXISTS idx_transaction_likes_employee ON transaction_likes(e
 
 -- RPC: aggregate monthly stats per employee (received, sent, likes)
 CREATE OR REPLACE FUNCTION aggregate_monthly_stats(year_in int, month_in int)
-RETURNS TABLE(employee_id uuid, name text, email text, department text, total_received int, total_sent int, total_likes int) AS $$
+RETURNS TABLE(employee_id uuid, name text, email text, department text, role text, total_received int, total_sent int, total_likes int) AS $$
   SELECT
     e.id AS employee_id,
     e.name,
     e.email,
     e.department,
+    e.role,
     COALESCE((
       SELECT SUM(ct.coins)
       FROM coin_transactions ct
