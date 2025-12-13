@@ -71,7 +71,7 @@ export default function SendPage() {
     const user = data.user
     if (!user || !user.email) return
 
-    const { data: emp } = await supabase.from('employees').select('id').eq('email', user.email).limit(1).maybeSingle()
+    const { data: emp } = await supabase.from('employees').select('id, bonus_coins').eq('email', user.email).limit(1).maybeSingle()
     if (!emp) return
 
     const weekStart = (() => {
@@ -94,7 +94,9 @@ export default function SendPage() {
 
     const { data: setting } = await supabase.from('settings').select('value').eq('key','default_weekly_coins').limit(1).maybeSingle()
     const defaultWeekly = setting ? parseInt(setting.value,10) : 250
-    setRemaining(defaultWeekly - sentSum)
+    const weeklyRemaining = defaultWeekly - sentSum
+    const bonusCoins = emp.bonus_coins || 0
+    setRemaining(weeklyRemaining + bonusCoins)
   }
 
   async function handleSubmit(e: React.FormEvent) {
