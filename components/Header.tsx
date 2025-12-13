@@ -1,8 +1,16 @@
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/router'
 import { supabase } from '../lib/supabaseClient'
 
 export default function Header() {
+  const router = useRouter()
+  
+  // ログインページでは何も表示しない
+  if (router.pathname === '/login' || router.pathname.startsWith('/auth/')) {
+    return null
+  }
+
   const [isOpen, setIsOpen] = useState(false)
   const [userName, setUserName] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)

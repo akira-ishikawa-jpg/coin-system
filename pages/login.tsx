@@ -45,7 +45,6 @@ export default function LoginPage() {
 
   return (
     <>
-      <Header />
       <div className="min-h-screen bg-white py-16 px-4">
         <div className="container mx-auto max-w-md">
           <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-8">

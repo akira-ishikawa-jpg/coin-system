@@ -3,6 +3,7 @@ import type { AppProps } from 'next/app'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { registerServiceWorker } from '../lib/notifications'
+import AuthMiddleware from '../lib/AuthMiddleware'
 
 export default function MyApp({ Component, pageProps }: AppProps) {
   const [loading, setLoading] = useState(true)
@@ -29,5 +30,10 @@ export default function MyApp({ Component, pageProps }: AppProps) {
   }, [])
 
   if (loading) return <div>Loading...</div>
-  return <Component {...pageProps} />
+  
+  return (
+    <AuthMiddleware>
+      <Component {...pageProps} />
+    </AuthMiddleware>
+  )
 }
