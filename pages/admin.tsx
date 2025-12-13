@@ -148,25 +148,30 @@ export default function AdminPage() {
     try {
       let query = supabase
         .from('audit_logs')
-        .select('*', { count: 'exact' })
-        .order('timestamp', { ascending: false })
+        .select('*, employees(name)', { count: 'exact' })
+        .order('created_at', { ascending: false })
         .range(auditPage * AUDIT_PAGE_SIZE, (auditPage + 1) * AUDIT_PAGE_SIZE - 1)
 
       if (auditFilterAction) {
         query = query.eq('action', auditFilterAction)
       }
-      if (auditFilterUser) {
-        query = query.ilike('actor_name', `%${auditFilterUser}%`)
-      }
 
       const { data, error, count } = await query
       if (error) throw error
 
-      setAuditLogs(data || [])
+      // Filter by user name if specified
+      let filteredData = data || []
+      if (auditFilterUser) {
+        filteredData = filteredData.filter((log: any) => 
+          log.employees?.name?.toLowerCase().includes(auditFilterUser.toLowerCase())
+        )
+      }
+
+      setAuditLogs(filteredData)
       setAuditTotal(count || 0)
     } catch (err) {
       console.error('監査ログ取得エラー:', err)
-      alert('監査ログの取得に失敗しました')
+      alert('監査ログの取得に失敗しました: ' + (err as Error).message)
     } finally {
       setAuditLoading(false)
     }
@@ -740,10 +745,10 @@ export default function AdminPage() {
                               </td>
                             </tr>
                           ) : (
-                            auditLogs.map((log) => (
+                            auditLogs.map((log: any) => (
                               <tr key={log.id} className="border-b border-slate-100 hover:bg-slate-50">
                                 <td className="p-3 text-gray-700">
-                                  {new Date(log.timestamp).toLocaleString('ja-JP')}
+                                  {new Date(log.created_at).toLocaleString('ja-JP')}
                                 </td>
                                 <td className="p-3">
                                   <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
@@ -756,11 +761,11 @@ export default function AdminPage() {
                                     {log.action}
                                   </span>
                                 </td>
-                                <td className="p-3 text-gray-700">{log.actor_name || '-'}</td>
-                                <td className="p-3 text-gray-600 text-xs">
-                                  {typeof log.details === 'object' 
-                                    ? JSON.stringify(log.details, null, 2)
-                                    : log.details || '-'}
+                                <td className="p-3 text-gray-700">{log.employees?.name || '-'}</td>
+                                <td className="p-3 text-gray-600 text-xs max-w-md truncate">
+                                  {typeof log.payload === 'object' 
+                                    ? JSON.stringify(log.payload)
+                                    : log.payload || '-'}
                                 </td>
                               </tr>
                             ))
