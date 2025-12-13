@@ -389,9 +389,6 @@ export default function HelpPage() {
             <p className="text-gray-600 mb-4">
               このマニュアルで解決しない問題がある場合は、システム管理者にお問い合わせください。
             </p>
-            <p className="text-sm text-gray-500">
-              📧 support@example.com | 💬 Slack: #coin-system-support
-            </p>
           </div>
         </div>
       </div>
