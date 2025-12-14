@@ -130,7 +130,7 @@ export default function AdminPage() {
       setRows((data as any) || []) 
     } else {
       // fallback query
-      const { data: employees } = await supabase.from('employees').select('id,name,email,department,role')
+      const { data: employees } = await supabase.from('employees').select('id,name,email,department,role,slack_id')
       const stats = await Promise.all(
         (employees || []).map(async (emp: any) => {
           const { data: recv } = await supabase.from('coin_transactions').select('coins').eq('receiver_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`).not('slack_payload', 'cs', '{\"bonus\":true}')
@@ -142,6 +142,7 @@ export default function AdminPage() {
             email: emp.email,
             department: emp.department,
             role: emp.role,
+            slack_id: emp.slack_id,
             total_received: (recv || []).reduce((s: any, r: any) => s + (r.coins || 0), 0),
             total_sent: (sent || []).reduce((s: any, r: any) => s + (r.coins || 0), 0),
             total_likes: (likes || []).length
@@ -846,6 +847,7 @@ export default function AdminPage() {
                       <th className="p-3 text-left font-bold text-gray-700">氏名</th>
                       <th className="p-3 text-left font-bold text-gray-700">メール</th>
                       <th className="p-3 text-left font-bold text-gray-700">部署</th>
+                      <th className="p-3 text-left font-bold text-gray-700">Slack ID</th>
                       <th className="p-3 text-left font-bold text-gray-700">権限</th>
                       <th className="p-3 text-right font-bold text-gray-700">月次受取合計</th>
                       <th className="p-3 text-right font-bold text-gray-700">月次贈呈合計</th>
@@ -860,6 +862,7 @@ export default function AdminPage() {
                           <td className="p-3 text-gray-800 font-bold">{r.name}</td>
                           <td className="p-3 text-gray-600 text-xs">{r.email}</td>
                           <td className="p-3 text-gray-600">{r.department}</td>
+                          <td className="p-3 text-gray-600 text-xs font-mono">{(r as any).slack_id || '未設定'}</td>
                           <td className="p-3">
                             <div className="flex items-center gap-2">
                               {currentUser?.role === 'admin' ? (
@@ -916,7 +919,7 @@ export default function AdminPage() {
                         {/* Inline Bonus Grant Form */}
                         {openBonusRowId === r.employee_id && (
                           <tr className={idx % 2 === 0 ? 'bg-teal-50' : 'bg-teal-100'}>
-                            <td colSpan={8} className="p-4">
+                            <td colSpan={9} className="p-4">
                               <div className="bg-white border border-teal-200 rounded-lg p-4 shadow-sm">
                                 <h4 className="text-lg font-bold text-teal-900 mb-3 flex items-center">
                                   🎁 {r.name} さんにボーナスコイン付与

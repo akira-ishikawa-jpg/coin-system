@@ -384,6 +384,74 @@ export default function MyPage() {
               <div className="text-xs text-gray-600 mb-1">今月の受取</div>
               <div className="text-xl font-bold text-teal-600">{receivedThisMonth}</div>
             </div>
+          </div>
+          
+          {/* Slack ID設定 */}
+          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-8">
+            <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center">
+              💬 Slack連携設定
+            </h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Slack ID
+                </label>
+                {editingSlackId ? (
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={newSlackId}
+                      onChange={(e) => setNewSlackId(e.target.value)}
+                      placeholder="例: U12345ABCDE"
+                      className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:border-teal-500"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={updateSlackId}
+                        className="bg-teal-600 text-white px-4 py-2 rounded-md font-bold hover:bg-teal-700 transition"
+                      >
+                        保存
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingSlackId(false)
+                          setNewSlackId(emp?.slack_id || '')
+                          setSlackUpdateMessage('')
+                        }}
+                        className="px-4 py-2 border border-slate-300 text-slate-700 rounded-md font-bold hover:bg-slate-100 transition"
+                      >
+                        キャンセル
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+                    <span className="text-slate-700">
+                      {emp?.slack_id || '未設定'}
+                    </span>
+                    <button
+                      onClick={() => setEditingSlackId(true)}
+                      className="text-teal-600 hover:text-teal-700 font-semibold text-sm"
+                    >
+                      編集
+                    </button>
+                  </div>
+                )}
+                
+                {slackUpdateMessage && (
+                  <div className={`mt-2 text-sm ${
+                    slackUpdateMessage.includes('✅') ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {slackUpdateMessage}
+                  </div>
+                )}
+                
+                <p className="text-sm text-gray-600 mt-2">
+                  💡 Slack IDはSlackアプリで自分のプロフィール → 「その他」→ 「メンバーIDをコピー」で取得できます
+                </p>
+              </div>
+            </div>
             <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 transition-all duration-300 hover:shadow-lg hover:scale-105">
               <div className="text-xs text-gray-600 mb-1">今月の贈呈</div>
               <div className="text-xl font-bold text-teal-600">{sentThisMonth}</div>
