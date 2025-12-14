@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const timestamp = req.headers['x-slack-request-timestamp'] as string
   const signature = req.headers['x-slack-signature'] as string
-  const rawBody = (req as any).rawBody || JSON.stringify(req.body)
+  const rawBody = (req as any).rawBody || new URLSearchParams(req.body).toString()
 
   // Slack署名検証
   if (!verifySlackRequest(timestamp, signature, rawBody)) {
