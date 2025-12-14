@@ -256,9 +256,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               'Content-Type': 'application/json'
             },
             body: JSON.stringify(slackMessage)
+          }).catch(error => {
+            console.error('❌ Fetch error for channel message:', error)
+            throw error
           })
           
-          const channelResult = await channelResponse.json()
+          if (!channelResponse) {
+            console.error('❌ No response from Slack API')
+            return
+          }
+          
+          const channelResult = await channelResponse.json().catch(error => {
+            console.error('❌ Error parsing channel response JSON:', error)
+            throw error
+          })
+          
           console.log('📬 Channel message response:', channelResult)
           
           if (!channelResult.ok) {
@@ -297,7 +309,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // 非同期でSlack通知を実行（awaitしない）
-      sendSlackNotifications()
+      sendSlackNotifications().catch(error => {
+        console.error('🔥 Slack notifications failed:', error)
+      })
 
       console.log('✅ Returning success response to Slack modal')
       return res.status(200).json({ response_action: "clear" })
