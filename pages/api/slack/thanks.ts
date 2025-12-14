@@ -178,7 +178,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.log('🔍 Slack ID検索開始:', recipientUsername);
         
         try {
-          let result = await Promise.race([
+          const result = await Promise.race([
             supabase
               .from('employees')
               .select('id, name, email, remaining_coins, slack_id')
@@ -186,7 +186,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             new Promise((_, reject) => 
               setTimeout(() => reject(new Error('Slack ID検索タイムアウト')), 5000)
             )
-          ]);
+          ]) as any;
           
           console.log('🔍 Slack ID検索結果:', result);
           
@@ -206,7 +206,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.log('🔍 Email検索開始:', recipientUsername);
           
           try {
-            result = await Promise.race([
+            const result = await Promise.race([
               supabase
                 .from('employees')
                 .select('id, name, email, remaining_coins, slack_id')
@@ -214,7 +214,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               new Promise((_, reject) => 
                 setTimeout(() => reject(new Error('Email検索タイムアウト')), 5000)
               )
-            ]);
+            ]) as any;
             
             console.log('🔍 Email検索結果:', result);
             
