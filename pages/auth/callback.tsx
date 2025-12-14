@@ -7,27 +7,31 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const handleCallback = async () => {
-      // URLからトークンを取得
-      const hashParams = new URLSearchParams(window.location.hash.substring(1))
-      const accessToken = hashParams.get('access_token')
-      const refreshToken = hashParams.get('refresh_token')
-
-      if (accessToken && refreshToken) {
-        // セッションを設定
-        const { error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken
-        })
-
+      try {
+        // Supabaseが自動的に認証を処理
+        const { data, error } = await supabase.auth.getSession()
+        
         if (error) {
           console.error('認証エラー:', error)
           router.push('/login?error=auth_failed')
-        } else {
+          return
+        }
+
+        if (data.session) {
           // 認証成功 → コインを贈るページへ
           router.push('/send')
+        } else {
+          // セッションがない場合、URLハッシュから認証を試行
+          const { data: authData, error: authError } = await supabase.auth.getUser()
+          
+          if (authError || !authData.user) {
+            router.push('/login')
+          } else {
+            router.push('/send')
+          }
         }
-      } else {
-        // トークンがない場合はログインページへ
+      } catch (err) {
+        console.error('認証処理エラー:', err)
         router.push('/login')
       }
     }
