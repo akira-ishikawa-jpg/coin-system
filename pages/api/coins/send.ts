@@ -66,22 +66,87 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     week_start: weekStart,
     slack_payload: { from_web: true }
   }
-  const { error } = await supabase.from('coin_transactions').insert(insertPayload)
+  const { data: transaction, error } = await supabase.from('coin_transactions').insert(insertPayload).select().single()
   if (error) return res.status(500).json({ error: 'insert failed' })
 
   // 異常検知を実行
   await detectAnomalies(sender.id, receiver.id, coins, weekStart)
 
+  // Slackチャンネルに投稿
+  try {
+    const slackChannelId = process.env.SLACK_CHANNEL_ID || ''
+    if (slackChannelId) {
+      const slackMessage = {
+        channel: slackChannelId,
+        text: `🎉 ${sender.name}さんが${receiver.name}さんに${coins}コインを贈りました！`,
+        blocks: [
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `🎉 *${sender.name}* → *${receiver.name}* へ *${coins}コイン* を贈りました！`
+            }
+          },
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `💬 _${message}_`
+            }
+          },
+          {
+            type: 'actions',
+            block_id: `like_${transaction.id}`,
+            elements: [
+              {
+                type: 'button',
+                text: {
+                  type: 'plain_text',
+                  text: '👍 いいね',
+                  emoji: true
+                },
+                action_id: 'like_transaction',
+                value: transaction.id.toString()
+              }
+            ]
+          },
+          {
+            type: 'context',
+            elements: [
+              {
+                type: 'mrkdwn',
+                text: `<!date^${Math.floor(Date.now() / 1000)}^{date_num} {time}|${new Date().toLocaleString('ja-JP')}>`
+              }
+            ]
+          }
+        ]
+      }
+
+      await fetch('https://slack.com/api/chat.postMessage', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SLACK_BOT_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(slackMessage)
+      })
+    }
+  } catch (e) {
+    await supabase.from('audit_logs').insert({ actor_id: sender.id, action: 'slack_channel_post_failed', payload: { error: String(e) } })
+  }
+
   // DM via Slack bot
   try {
-    await fetch('https://slack.com/api/chat.postMessage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json; charset=utf-8', Authorization: `Bearer ${SLACK_BOT_TOKEN}` },
-      body: JSON.stringify({
-        channel: receiver.slack_id,
-        text: `:tada: *${sender.name}* さんから ${coins} コインの感謝が届きました！\n> ${message}`
+    if (receiver.slack_id) {
+      await fetch('https://slack.com/api/chat.postMessage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=utf-8', Authorization: `Bearer ${SLACK_BOT_TOKEN}` },
+        body: JSON.stringify({
+          channel: receiver.slack_id,
+          text: `:tada: *${sender.name}* さんから ${coins} コインの感謝が届きました！\n> ${message}`
+        })
       })
-    })
+    }
   } catch (e) {
     await supabase.from('audit_logs').insert({ actor_id: sender.id, action: 'slack_dm_failed', payload: { error: String(e) } })
   }

@@ -39,37 +39,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: 'Invalid signature' })
   }
 
-  const { text, user_id, user_name } = req.body
+  const { trigger_id, user_id } = req.body
 
   try {
-    // コマンドのパース: /thanks @user 10 ありがとう！
-    const match = text.match(/<@(U[A-Z0-9]+)\|([^>]+)>\s+(\d+)\s+(.+)/)
-    
-    if (!match) {
-      return res.status(200).json({
-        response_type: 'ephemeral',
-        text: '❌ 使い方: `/thanks @ユーザー名 コイン数 メッセージ`\n例: `/thanks @山田 10 いつもありがとう！`'
-      })
-    }
-
-    const [, receiverSlackId, receiverName, coinsStr, message] = match
-    const coins = parseInt(coinsStr, 10)
-
-    if (!message || !message.trim()) {
-      return res.status(200).json({
-        response_type: 'ephemeral',
-        text: '❌ メッセージは必須です'
-      })
-    }
-
-    if (coins < 1 || coins > 100) {
-      return res.status(200).json({
-        response_type: 'ephemeral',
-        text: '❌ コイン数は1〜100の範囲で指定してください（1回の送付上限）'
-      })
-    }
-
-    // 送信者を取得
+    // 送信者を確認
     const { data: sender } = await supabase
       .from('employees')
       .select('id, name')
@@ -84,156 +57,129 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
     }
 
-    // 受信者を取得
-    const { data: receiver } = await supabase
+    // アプリ上の全ユーザー一覧を取得
+    const { data: employees } = await supabase
       .from('employees')
-      .select('id, name, slack_id')
-      .eq('slack_id', receiverSlackId)
-      .limit(1)
-      .maybeSingle()
+      .select('id, name')
+      .neq('id', sender.id) // 自分以外
+      .order('name')
 
-    if (!receiver) {
+    if (!employees || employees.length === 0) {
       return res.status(200).json({
         response_type: 'ephemeral',
-        text: `❌ ${receiverName}さんのSlack ID（${receiverSlackId}）がシステムに登録されていません。`
+        text: '❌ 送付可能なユーザーが見つかりません。'
       })
     }
 
-    // 今週の開始日を計算
-    const getWeekStart = () => {
-      const d = new Date()
-      const day = d.getDay()
-      const diff = (day === 0 ? -6 : 1) - day
-      d.setDate(d.getDate() + diff)
-      d.setHours(0, 0, 0, 0)
-      return d.toISOString().slice(0, 10)
-    }
+    // ユーザー選択肢を作成（最大100個まで）
+    const userOptions = employees.slice(0, 100).map(emp => ({
+      text: {
+        type: 'plain_text',
+        text: emp.name
+      },
+      value: emp.id.toString()
+    }))
 
-    const weekStart = getWeekStart()
-    const weekStartDate = new Date(weekStart + 'T00:00:00.000Z')
-
-    // 今週送ったコイン数を確認
-    const { data: sentTx } = await supabase
-      .from('coin_transactions')
-      .select('coins')
-      .eq('sender_id', sender.id)
-      .gte('created_at', weekStartDate.toISOString())
-
-    const sentSum = (sentTx || []).reduce((s: any, r: any) => s + (r.coins || 0), 0)
-
-    const { data: setting } = await supabase
-      .from('settings')
-      .select('value')
-      .eq('key', 'default_weekly_coins')
-      .limit(1)
-      .maybeSingle()
-
-    const defaultWeekly = setting ? parseInt(setting.value, 10) : 250
-    const remaining = defaultWeekly - sentSum
-
-    if (coins > remaining) {
-      return res.status(200).json({
-        response_type: 'ephemeral',
-        text: `❌ 残コイン不足です。今週の残コイン: ${remaining}`
-      })
-    }
-
-    // コイン送付を実行
-    const { data: transaction, error: insertError } = await supabase
-      .from('coin_transactions')
-      .insert({
-        sender_id: sender.id,
-        receiver_id: receiver.id,
-        coins,
-        message,
-        week_start: weekStart,
-        slack_payload: { user_id, user_name, channel_id: SLACK_CHANNEL_ID }
-      })
-      .select()
-      .single()
-
-    if (insertError || !transaction) {
-      return res.status(200).json({
-        response_type: 'ephemeral',
-        text: '❌ コイン送付に失敗しました: ' + (insertError?.message || '')
-      })
-    }
-
-    // Slackチャンネルに投稿
-    const slackMessage = {
-      channel: SLACK_CHANNEL_ID,
-      text: `🎉 ${sender.name}さんが${receiver.name}さんに${coins}コインを贈りました！`,
+    // モーダルを開く
+    const modal = {
+      type: 'modal',
+      title: {
+        type: 'plain_text',
+        text: '感謝のコインを贈る'
+      },
+      submit: {
+        type: 'plain_text',
+        text: '送信'
+      },
+      close: {
+        type: 'plain_text',
+        text: 'キャンセル'
+      },
       blocks: [
         {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `🎉 *${sender.name}* → *${receiver.name}* へ *${coins}コイン* を贈りました！`
+            text: '*感謝のメッセージとコインを贈りましょう！*'
           }
         },
         {
-          type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: `💬 _${message}_`
+          type: 'input',
+          block_id: 'receiver',
+          element: {
+            type: 'static_select',
+            placeholder: {
+              type: 'plain_text',
+              text: '贈る相手を選択してください'
+            },
+            options: userOptions,
+            action_id: 'receiver_select'
+          },
+          label: {
+            type: 'plain_text',
+            text: '贈る相手'
           }
         },
         {
-          type: 'actions',
-          block_id: `like_${transaction.id}`,
-          elements: [
-            {
-              type: 'button',
-              text: {
-                type: 'plain_text',
-                text: '👍 いいね',
-                emoji: true
-              },
-              action_id: 'like_transaction',
-              value: transaction.id
-            }
-          ]
+          type: 'input',
+          block_id: 'coins',
+          element: {
+            type: 'number_input',
+            is_decimal_allowed: false,
+            min_value: '1',
+            max_value: '100',
+            initial_value: '10',
+            action_id: 'coins_input'
+          },
+          label: {
+            type: 'plain_text',
+            text: 'コイン数 (1-100)'
+          }
         },
         {
-          type: 'context',
-          elements: [
-            {
-              type: 'mrkdwn',
-              text: `<!date^${Math.floor(Date.now() / 1000)}^{date_num} {time}|${new Date().toLocaleString('ja-JP')}>`
-            }
-          ]
+          type: 'input',
+          block_id: 'message',
+          element: {
+            type: 'plain_text_input',
+            multiline: true,
+            placeholder: {
+              type: 'plain_text',
+              text: 'いつもありがとうございます！'
+            },
+            action_id: 'message_input'
+          },
+          label: {
+            type: 'plain_text',
+            text: '感謝のメッセージ'
+          }
         }
-      ]
+      ],
+      private_metadata: JSON.stringify({ sender_id: sender.id })
     }
 
-    await fetch('https://slack.com/api/chat.postMessage', {
+    const modalResponse = await fetch('https://slack.com/api/views.open', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${SLACK_BOT_TOKEN}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(slackMessage)
+      body: JSON.stringify({
+        trigger_id: trigger_id,
+        view: modal
+      })
     })
 
-    // 受信者にDM通知
-    if (receiver.slack_id) {
-      await fetch('https://slack.com/api/chat.postMessage', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${SLACK_BOT_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          channel: receiver.slack_id,
-          text: `🎁 ${sender.name}さんから${coins}コインを受け取りました！\n💬 「${message}」\n\n詳細: https://coin-system-nine.vercel.app/thanks`
-        })
+    const modalResult = await modalResponse.json()
+    
+    if (!modalResult.ok) {
+      console.error('Modal open failed:', modalResult)
+      return res.status(200).json({
+        response_type: 'ephemeral',
+        text: '❌ モーダルを開けませんでした。もう一度お試しください。'
       })
     }
 
-    return res.status(200).json({
-      response_type: 'ephemeral',
-      text: `✅ ${receiver.name}さんに${coins}コインを贈りました！（残コイン: ${remaining - coins}）`
-    })
+    return res.status(200).json()
 
   } catch (error: any) {
     console.error('Slack command error:', error)
