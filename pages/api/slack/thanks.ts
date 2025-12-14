@@ -156,15 +156,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // 進捗通知: 受取人検索開始
         await sendSlackMessage(user_id, '🔍 ユーザー検索中...');
         
-        // 受取人をユーザー名で検索
+        // 受取人をユーザー名で検索（複数パターンで検索）
         console.log('🔍 受取人検索:', recipientUsername);
-        const { data: recipients, error: recipientError } = await supabase
-          .from('employees')
-          .select('id, name, email, remaining_coins')
-          .ilike('name', `%${recipientUsername}%`);
+        
+        // 検索パターンを複数用意
+        const searchPatterns = [
+          recipientUsername,                    // そのまま: "荒木"
+          `%${recipientUsername}%`,            // 部分一致: "%荒木%"
+          `${recipientUsername}%`,             // 前方一致: "荒木%"
+          `%${recipientUsername}`,             // 後方一致: "%荒木"
+        ];
+        
+        let recipients = null;
+        let recipientError = null;
+        
+        // 複数パターンで順次検索
+        for (const pattern of searchPatterns) {
+          console.log('🔍 検索パターン:', pattern);
+          const result = await supabase
+            .from('employees')
+            .select('id, name, email, remaining_coins')
+            .ilike('name', pattern);
+          
+          if (result.error) {
+            console.error('❌ 検索エラー:', result.error);
+            recipientError = result.error;
+            continue;
+          }
+          
+          if (result.data && result.data.length > 0) {
+            console.log('✅ 検索成功:', result.data);
+            recipients = result.data;
+            break;
+          }
+        }
 
         if (recipientError) {
-          console.error('❌ 受取人検索エラー:', recipientError);
+          console.error('❌ 全ての検索パターンでエラー:', recipientError);
           await sendSlackMessage(user_id, `❌ データベースエラーが発生しました。\nエラー詳細: ${recipientError.message}`);
           return;
         }
