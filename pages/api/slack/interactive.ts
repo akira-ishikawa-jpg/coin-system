@@ -64,7 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('receiver values:', values.receiver)
       console.log('selected_option:', values.receiver.receiver_select.selected_option)
       
-      const receiverId = parseInt(values.receiver.receiver_select.selected_option.value)
+      const receiverId = values.receiver.receiver_select.selected_option.value // parseInt削除
       const coins = parseInt(values.coins.coins_input.value)
       const message = values.message.message_input.value
       
