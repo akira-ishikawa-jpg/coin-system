@@ -197,6 +197,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // その後のSlack通知処理は非同期で実行
       const sendSlackNotifications = async () => {
         try {
+          console.log('🚀 Starting Slack notifications...')
+          console.log('SLACK_BOT_TOKEN exists:', !!process.env.SLACK_BOT_TOKEN)
+          console.log('SLACK_CHANNEL_ID:', process.env.SLACK_CHANNEL_ID)
+          
           // Slackチャンネルに投稿
           const slackMessage = {
             channel: process.env.SLACK_CHANNEL_ID || '',
@@ -244,21 +248,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             ]
           }
 
-          await fetch('https://slack.com/api/chat.postMessage', {
+          console.log('📤 Sending Slack message to channel...')
+          const channelResponse = await fetch('https://slack.com/api/chat.postMessage', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${SLACK_BOT_TOKEN}`,
+              'Authorization': `Bearer ${process.env.SLACK_BOT_TOKEN}`,
               'Content-Type': 'application/json'
             },
             body: JSON.stringify(slackMessage)
           })
+          
+          const channelResult = await channelResponse.json()
+          console.log('📬 Channel message response:', channelResult)
+          
+          if (!channelResult.ok) {
+            console.error('❌ Channel message failed:', channelResult.error)
+          } else {
+            console.log('✅ Channel message sent successfully')
+          }
 
           // 受信者にDM通知
           if (receiver.slack_id) {
-            await fetch('https://slack.com/api/chat.postMessage', {
+            console.log(`💌 Sending DM to ${receiver.name} (${receiver.slack_id})...`)
+            const dmResponse = await fetch('https://slack.com/api/chat.postMessage', {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer ${SLACK_BOT_TOKEN}`,
+                'Authorization': `Bearer ${process.env.SLACK_BOT_TOKEN}`,
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
@@ -266,9 +281,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 text: `🎁 ${sender.name}さんから${coins}コインを受け取りました！\n💬 「${message}」\n\n詳細: https://coin-system-nine.vercel.app/thanks`
               })
             })
+            
+            const dmResult = await dmResponse.json()
+            console.log('📮 DM response:', dmResult)
+            
+            if (!dmResult.ok) {
+              console.error('❌ DM failed:', dmResult.error)
+            } else {
+              console.log('✅ DM sent successfully')
+            }
           }
         } catch (error) {
-          console.error('Slack notification error:', error)
+          console.error('❌ Slack notification error:', error)
         }
       }
 
