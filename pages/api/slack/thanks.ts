@@ -264,25 +264,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const recipient = recipients[0];
         console.log('✅ 受取人確定:', recipient.name);
-
-        // 進捗通知: 送信者確認
-        await sendSlackMessage(user_id, `✅ 受取人確定: ${recipient.name}\n🔍 送信者アカウント確認中...`);
-
-        if (!recipients || recipients.length === 0) {
-          console.log('❌ 受取人が見つかりません:', recipientUsername);
-          await sendSlackMessage(user_id, `❌ ユーザー「${recipientUsername}」が見つかりません。正確な名前を指定してください。`);
-          return;
-        }
-
-        if (recipients.length > 1) {
-          console.log('⚠️ 複数のユーザーが見つかりました:', recipients.map(r => r.name));
-          const names = recipients.map(r => r.name).join(', ');
-          await sendSlackMessage(user_id, `⚠️ 複数のユーザーが見つかりました: ${names}\nより具体的な名前を指定してください。`);
-          return;
-        }
-
-        const recipient = recipients[0];
-        console.log('✅ 受取人確定:', recipient.name);
         await sendSlackMessage(user_id, `✅ 受取人確定: ${recipient.name}`);
 
         // 送信者をSlack IDで検索
