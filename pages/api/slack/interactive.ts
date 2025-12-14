@@ -59,9 +59,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const values = payload.view.state.values
       const privateMetadata = JSON.parse(payload.view.private_metadata || '{}')
       
+      console.log('=== DEBUG INFO ===')
+      console.log('privateMetadata:', privateMetadata)
+      console.log('receiver values:', values.receiver)
+      console.log('selected_option:', values.receiver.receiver_select.selected_option)
+      
       const receiverId = parseInt(values.receiver.receiver_select.selected_option.value)
       const coins = parseInt(values.coins.coins_input.value)
       const message = values.message.message_input.value
+      
+      console.log('Parsed receiverId:', receiverId)
+      console.log('senderId:', privateMetadata.sender_id)
 
       if (!receiverId || !coins || !message || !message.trim()) {
         return res.status(200).json({
@@ -97,6 +105,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .select('id, name, slack_id')
         .eq('id', receiverId)
         .maybeSingle()
+
+      console.log('Database query results:')
+      console.log('sender:', sender)
+      console.log('receiver:', receiver)
 
       if (!sender || !receiver) {
         return res.status(200).json({
