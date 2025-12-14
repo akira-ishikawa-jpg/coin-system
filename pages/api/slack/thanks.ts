@@ -76,7 +76,7 @@ async function sendSlackMessage(userId: string, text: string) {
     
     clearTimeout(timeoutId);
   } catch (error) {
-    console.error('❌ Slack DM送信エラー (続行):', error.message);
+    console.error('❌ Slack DM送信エラー (続行):', error instanceof Error ? error.message : String(error));
     // エラーでも処理を続行
   }
 }
@@ -110,7 +110,7 @@ async function postToSlack(channelId: string, text: string) {
     
     clearTimeout(timeoutId);
   } catch (error) {
-    console.error('❌ Slackチャンネル投稿エラー (続行):', error.message);
+    console.error('❌ Slackチャンネル投稿エラー (続行):', error instanceof Error ? error.message : String(error));
     // エラーでも処理を続行
   }
 }
