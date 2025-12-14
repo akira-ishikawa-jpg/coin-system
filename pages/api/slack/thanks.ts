@@ -2,6 +2,8 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 import querystring from 'querystring'
+import { detectAnomaly } from '../../../lib/anomalyDetection'
+import { sendNotifications } from '../../../lib/notifications'
 
 export const config = { api: { bodyParser: false } }
 
@@ -9,6 +11,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABAS
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 const SLACK_SIGNING_SECRET = process.env.SLACK_SIGNING_SECRET || ''
 const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN || ''
+const SLACK_CHANNEL_ID = process.env.SLACK_CHANNEL_ID || ''
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
@@ -22,241 +25,268 @@ function verifySlackSignature(rawBody: string, headers: any) {
   const timestamp = headers['x-slack-request-timestamp']
   const sig = headers['x-slack-signature']
   if (!timestamp || !sig) return false
+  
   const age = Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp))
   if (age > 60 * 5) return false
+  
   const basestring = `v0:${timestamp}:${rawBody}`
   const hmac = crypto.createHmac('sha256', SLACK_SIGNING_SECRET)
   hmac.update(basestring)
   const expected = `v0=${hmac.digest('hex')}`
+  
   return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig))
 }
 
-function getWeekStart(date = new Date()) {
-  const d = new Date(date)
-  const day = d.getDay() // 0=Sun,1=Mon
-  const diff = (day === 0 ? -6 : 1) - day // make Monday the first day
-  d.setDate(d.getDate() + diff)
-  d.setHours(0, 0, 0, 0)
-  return d.toISOString().slice(0, 10) // YYYY-MM-DD
+// Slack APIヘルパー関数
+async function sendSlackMessage(userId: string, text: string) {
+  try {
+    await fetch('https://slack.com/api/chat.postMessage', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${SLACK_BOT_TOKEN}`
+      },
+      body: JSON.stringify({
+        channel: userId,
+        text: text
+      })
+    });
+  } catch (error) {
+    console.error('❌ Slack DM送信エラー:', error);
+  }
+}
+
+async function postToSlack(channelId: string, text: string) {
+  try {
+    await fetch('https://slack.com/api/chat.postMessage', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${SLACK_BOT_TOKEN}`
+      },
+      body: JSON.stringify({
+        channel: channelId,
+        text: text
+      })
+    });
+  } catch (error) {
+    console.error('❌ Slackチャンネル投稿エラー:', error);
+  }
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const raw = await getRawBody(req)
-  if (!verifySlackSignature(raw, req.headers)) {
-    res.status(401).send('invalid signature')
-    return
-  }
-
-  const body = querystring.parse(raw)
-  // body.text example: "<@U12345> 50 ありがとう！" or "<@U12345> ありがとう！"
-  const text = (body.text as string) || ''
-  const user_id = body.user_id as string
-  const user_name = body.user_name as string
-
-  // Try pattern with coins first: <@USER_ID> coins message or @username coins message
-  let m = text.match(/<@([A-Z0-9]+)>\s+(\d+)\s*(.*)/s) || text.match(/@([a-zA-Z0-9\-_.]+)\s+(\d+)\s*(.*)/s)
-  let targetSlackId: string, coins: number, message: string, isUsernameFormat = false
+  console.log('🚀 Slack /thanks コマンド開始');
   
-  if (m) {
-    // Pattern with explicit coins
-    targetSlackId = m[1]
-    coins = parseInt(m[2], 10)
-    message = m[3] || ''
-    isUsernameFormat = !targetSlackId.match(/^[A-Z0-9]+$/) // Check if it's a username instead of Slack ID
-  } else {
-    // Try pattern without coins: <@USER_ID> message or @username message (default to 5 coins)
-    m = text.match(/<@([A-Z0-9]+)>\s*(.*)/s) || text.match(/@([a-zA-Z0-9\-_.]+)\s*(.*)/s)
-    if (!m) {
-      res.setHeader('Content-Type', 'application/json')
-      res.status(200).json({ response_type: 'ephemeral', text: `使い方: /thanks @相手 [コイン数] メッセージ\n例: /thanks @田中さん ありがとう！\n例: /thanks @田中さん 10 いつもありがとう！\n\nデバッグ: "${text}"` })
-      return
+  try {
+    // 1. 署名検証
+    const raw = await getRawBody(req)
+    if (!verifySlackSignature(raw, req.headers)) {
+      return res.status(401).send('invalid signature')
     }
-    targetSlackId = m[1]
-    coins = 5 // デフォルト5コイン
-    message = m[2] || ''
-    isUsernameFormat = !targetSlackId.match(/^[A-Z0-9]+$/) // Check if it's a username instead of Slack ID
-  }
 
-  // Debug: Log the actual text received and parsed IDs
-  await supabase.from('audit_logs').insert({ 
-    actor_id: null, 
-    action: 'slack_debug', 
-    payload: { 
-      received_text: text, 
-      user_id, 
-      user_name,
-      parsed_target_slack_id: targetSlackId,
-      is_username_format: isUsernameFormat,
-      parsed_coins: coins,
-      parsed_message: message
-    } 
-  })
+    // 2. リクエストパース
+    const body = querystring.parse(raw)
+    const text = (body.text as string) || ''
+    const user_id = body.user_id as string
+    const user_name = body.user_name as string
+    const channel_id = body.channel_id as string
 
-  if (isNaN(coins) || coins <= 0) {
-    res.setHeader('Content-Type', 'application/json')
-    res.status(200).json({ response_type: 'ephemeral', text: 'コイン数は1以上の数字で指定してください。' })
-    return
-  }
+    console.log('📝 リクエスト解析:', { text, user_id, user_name, channel_id });
 
-  // 即座にSlackに成功レスポンスを返す（全ての重い処理前に）
-  res.setHeader('Content-Type', 'application/json')
-  res.status(200).json({ response_type: 'in_channel', text: `コイン送信処理を開始しました...` })
-
-  // 全ての処理を非同期で実行
-  setImmediate(async () => {
-    try {
-      // find sender and receiver in employees
-      const { data: senderData } = await supabase.from('employees').select('id,name,slack_id,email').eq('slack_id', user_id).limit(1).maybeSingle()
-      
-      let receiverData: any
-      if (isUsernameFormat) {
-        // Search by username patterns (try different variations)
-        const possibleUsernames = [
-          targetSlackId.toLowerCase(),
-          targetSlackId.replace(/-/g, ''),
-          targetSlackId.replace(/_/g, ''),
-          targetSlackId.replace(/[._-]/g, '')
-        ]
-        
-        let found = false
-        for (const username of possibleUsernames) {
-          const { data } = await supabase.from('employees')
-            .select('id,name,slack_id,email')
-            .or(`email.ilike.%${username}%,name.ilike.%${username}%`)
-            .limit(1)
-            .maybeSingle()
-          
-          if (data) {
-            receiverData = data
-            found = true
-            break
-          }
-        }
-        
-        if (!found) {
-          return
-        }
-      } else {
-        // Search by Slack ID
-        const { data } = await supabase.from('employees').select('id,name,slack_id,email').eq('slack_id', targetSlackId).limit(1).maybeSingle()
-        receiverData = data
-      }
-
-      if (!senderData || !receiverData) {
-        return
-      }
-
-      // Check weekly remaining coins
-      const weekStart = getWeekStart()
-      const { data: sentTx } = await supabase.from('coin_transactions').select('coins').eq('sender_id', senderData.id).eq('week_start', weekStart).not('slack_payload', 'cs', '{"bonus":true}')
-      const sentSum = (sentTx || []).reduce((s: number, r: any) => s + (r.coins || 0), 0)
-
-      const { data: setting } = await supabase.from('settings').select('value').eq('key', 'default_weekly_coins').limit(1).maybeSingle()
-      const defaultWeekly = setting ? parseInt(setting.value, 10) : 250
-      const remaining = defaultWeekly - sentSum
-
-      if (coins > remaining) {
-        return
-      }
-
-      // prepare transaction payload
-      const insertPayload = {
-        sender_id: senderData.id,
-        receiver_id: receiverData.id,
-        coins,
-        message,
-        emoji: '',
-        week_start: weekStart,
-        slack_payload: { from_slack_user: user_id, raw_text: text }
-      }
-
-      // insert transaction
-      const { error: insertError } = await supabase.from('coin_transactions').insert(insertPayload)
-      if (insertError) {
-        return
-      }
-
-      // 異常検知を実行
-      const { detectAnomalies } = await import('../../../lib/anomalyDetection')
-      await detectAnomalies(senderData.id, receiverData.id, coins, weekStart)
-    // Send message to channel with like button
-    const SLACK_CHANNEL_ID = process.env.SLACK_CHANNEL_ID || ''
-    let messageTs = ''
+    // 3. テキスト形式の基本チェック（軽量）
+    const match = text.match(/^@(\S+)\s+(\d+)(?:\s+(.*))?$/);
     
-    try {
-      if (SLACK_CHANNEL_ID) {
-        const channelResponse = await fetch('https://slack.com/api/chat.postMessage', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-            Authorization: `Bearer ${SLACK_BOT_TOKEN}`
-          },
-          body: JSON.stringify({
-            channel: SLACK_CHANNEL_ID,
-            text: `:coin: *${senderData.name}* → *${receiverData.name}* (${coins}コイン)\n> ${message}`,
-            blocks: [
-              {
-                type: 'section',
-                text: {
-                  type: 'mrkdwn',
-                  text: `:coin: *${senderData.name}* → *${receiverData.name}* (${coins}コイン)\n> ${message}`
-                }
-              },
-              {
-                type: 'actions',
-                elements: [
-                  {
-                    type: 'button',
-                    text: {
-                      type: 'plain_text',
-                      text: '👍 いいね'
-                    },
-                    action_id: 'like_transaction',
-                    value: insertPayload.sender_id + '|' + insertPayload.receiver_id
-                  }
-                ]
-              }
-            ]
-          })
-        })
-        
-        const channelData = await channelResponse.json()
-        if (channelData.ok) {
-          messageTs = channelData.ts
-        }
-      }
-    } catch (err) {
-      await supabase.from('audit_logs').insert({ 
-        actor_id: senderData.id, 
-        action: 'slack_channel_post_failed', 
-        payload: { error: String(err) } 
-      })
+    if (!match) {
+      console.log('❌ 形式エラー:', text);
+      return res.status(200).json({
+        response_type: 'ephemeral',
+        text: '❌ 使用法: `/thanks @username コイン数 メッセージ`\n例: `/thanks @田中 10 ありがとうございます！`'
+      });
     }
 
-    // send DM to receiver
-    try {
-      await fetch('https://slack.com/api/chat.postMessage', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          Authorization: `Bearer ${SLACK_BOT_TOKEN}`
-        },
-        body: JSON.stringify({
-          channel: receiverData.slack_id || targetSlackId,
-          text: `:tada: *${senderData.name}* さんから ${coins} コインの感謝が届きました！\n> ${message}`
-        })
-      })
-    } catch (err) {
-      // log but continue
-      await supabase.from('audit_logs').insert({ actor_id: senderData.id, action: 'slack_dm_failed', payload: { error: String(err) } })
+    const [, recipientUsername, coinAmountStr, message] = match;
+    const coinAmount = parseInt(coinAmountStr, 10);
+
+    if (isNaN(coinAmount) || coinAmount <= 0) {
+      console.log('❌ コイン数エラー:', coinAmountStr);
+      return res.status(200).json({
+        response_type: 'ephemeral',
+        text: '❌ コイン数は1以上の数字で指定してください。'
+      });
     }
-    } catch (error) {
-      // Log any errors in background processing
-      await supabase.from('audit_logs').insert({
-        actor_id: null,
-        action: 'slack_background_error',
-        payload: { error: String(error) }
-      })
+
+    console.log('✅ 基本チェック完了:', { recipientUsername, coinAmount, message });
+
+    // 4. 即座にSlackにレスポンス（3秒以内）
+    res.status(200).json({
+      response_type: 'in_channel',
+      text: '🚀 コイン送信処理を開始しました！処理完了までしばらくお待ちください...'
+    });
+
+    console.log('⚡ Slackレスポンス送信完了');
+
+    // 5. 全ての重い処理を完全非同期で実行
+    process.nextTick(async () => {
+      console.log('🔄 非同期処理開始');
+      
+      try {
+        // 受取人をユーザー名で検索
+        console.log('🔍 受取人検索:', recipientUsername);
+        const { data: recipients, error: recipientError } = await supabase
+          .from('employees')
+          .select('id, name, email, remaining_coins')
+          .ilike('name', `%${recipientUsername}%`);
+
+        if (recipientError) {
+          console.error('❌ 受取人検索エラー:', recipientError);
+          await sendSlackMessage(user_id, '❌ データベースエラーが発生しました。');
+          return;
+        }
+
+        if (!recipients || recipients.length === 0) {
+          console.log('❌ 受取人が見つかりません:', recipientUsername);
+          await sendSlackMessage(user_id, `❌ ユーザー「${recipientUsername}」が見つかりません。正確な名前を指定してください。`);
+          return;
+        }
+
+        if (recipients.length > 1) {
+          console.log('⚠️ 複数のユーザーが見つかりました:', recipients.map(r => r.name));
+          const names = recipients.map(r => r.name).join(', ');
+          await sendSlackMessage(user_id, `⚠️ 複数のユーザーが見つかりました: ${names}\nより具体的な名前を指定してください。`);
+          return;
+        }
+
+        const recipient = recipients[0];
+        console.log('✅ 受取人確定:', recipient.name);
+
+        // 送信者をSlack IDで検索
+        console.log('🔍 送信者検索:', user_id);
+        const { data: senders, error: senderError } = await supabase
+          .from('employees')
+          .select('id, name, remaining_coins, bonus_coins')
+          .eq('slack_id', user_id);
+
+        if (senderError) {
+          console.error('❌ 送信者検索エラー:', senderError);
+          await sendSlackMessage(user_id, '❌ データベースエラーが発生しました。');
+          return;
+        }
+
+        if (!senders || senders.length === 0) {
+          console.log('❌ 送信者が見つかりません:', user_id);
+          await sendSlackMessage(user_id, '❌ あなたのアカウントが見つかりません。管理者にSlack IDの設定を依頼してください。');
+          return;
+        }
+
+        const sender = senders[0];
+        console.log('✅ 送信者確定:', sender.name);
+
+        // コイン残高確認（通常コイン + ボーナスコイン）
+        const totalAvailableCoins = (sender.remaining_coins || 0) + (sender.bonus_coins || 0);
+        console.log('💰 利用可能コイン:', totalAvailableCoins, '(通常:', sender.remaining_coins, '+ ボーナス:', sender.bonus_coins, ')');
+
+        if (totalAvailableCoins < coinAmount) {
+          console.log('❌ コイン不足');
+          await sendSlackMessage(user_id, `❌ 送信コイン数が不足しています。\n必要: ${coinAmount}コイン\n利用可能: ${totalAvailableCoins}コイン`);
+          return;
+        }
+
+        // 取引記録
+        console.log('💸 取引記録開始');
+        const { error: transactionError } = await supabase
+          .from('coin_transactions')
+          .insert({
+            sender_id: sender.id,
+            recipient_id: recipient.id,
+            amount: coinAmount,
+            message: message || '',
+            is_monthly: false
+          });
+
+        if (transactionError) {
+          console.error('❌ 取引記録エラー:', transactionError);
+          await sendSlackMessage(user_id, '❌ コイン送信に失敗しました。再度お試しください。');
+          return;
+        }
+
+        console.log('✅ 取引記録完了');
+
+        // コイン残高更新（ボーナスコイン優先消費）
+        let remainingAmount = coinAmount;
+        let newBonusCoins = sender.bonus_coins || 0;
+        let newRemainingCoins = sender.remaining_coins || 0;
+
+        if (newBonusCoins >= remainingAmount) {
+          newBonusCoins -= remainingAmount;
+        } else {
+          remainingAmount -= newBonusCoins;
+          newBonusCoins = 0;
+          newRemainingCoins -= remainingAmount;
+        }
+
+        console.log('💰 残高更新:', { newRemainingCoins, newBonusCoins });
+
+        // 送信者の残高更新
+        await supabase
+          .from('employees')
+          .update({
+            remaining_coins: newRemainingCoins,
+            bonus_coins: newBonusCoins
+          })
+          .eq('id', sender.id);
+
+        // 受取人の残高更新
+        await supabase
+          .from('employees')
+          .update({
+            remaining_coins: (recipient.remaining_coins || 0) + coinAmount
+          })
+          .eq('id', recipient.id);
+
+        console.log('✅ 残高更新完了');
+
+        // 成功通知
+        const channelMessage = `🎉 *${sender.name}* さんが *${recipient.name}* さんに **${coinAmount}コイン** を送りました！\n💬 ${message || ''}`;
+        const dmMessage = `✅ ${recipient.name}さんに${coinAmount}コインを送信しました！\n残りコイン: ${newRemainingCoins + newBonusCoins}コイン`;
+
+        await Promise.all([
+          postToSlack(SLACK_CHANNEL_ID || channel_id, channelMessage),
+          sendSlackMessage(user_id, dmMessage)
+        ]);
+
+        console.log('✅ 通知送信完了');
+
+        // 異常検知（エラーでも処理は停止しない）
+        try {
+          console.log('🔍 異常検知開始');
+          const anomalyResult = await detectAnomaly(sender.id, coinAmount, message || '');
+          if (anomalyResult.isAnomaly) {
+            console.log('⚠️ 異常検知アラート:', anomalyResult.reasons);
+          }
+        } catch (anomalyError) {
+          console.error('❌ 異常検知エラー（処理継続）:', anomalyError);
+        }
+
+        console.log('🎯 全処理完了');
+
+      } catch (error) {
+        console.error('❌ 非同期処理エラー:', error);
+        try {
+          await sendSlackMessage(user_id, '❌ 処理中にエラーが発生しました。管理者にお問い合わせください。');
+        } catch (notificationError) {
+          console.error('❌ エラー通知送信失敗:', notificationError);
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ 初期処理エラー:', error);
+    
+    if (!res.headersSent) {
+      res.status(200).json({
+        response_type: 'ephemeral',
+        text: '❌ 処理中にエラーが発生しました。'
+      });
     }
-  })
+  }
 }
