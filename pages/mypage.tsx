@@ -112,7 +112,7 @@ export default function MyPage() {
     const weekStartDate = new Date(weekStart)
     const { data: sent } = await supabase
       .from('coin_transactions')
-      .select('coins')
+      .select('coins, created_at')
       .eq('sender_id', emp.id)
       .gte('created_at', weekStartDate.toISOString())
       .not('slack_payload', 'cs', '{"bonus":true}')
