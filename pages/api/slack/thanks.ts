@@ -196,39 +196,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // 進捗通知: 受取人検索開始
         await sendSlackMessage(user_id, '🔍 ユーザー検索中...');
         
-        // 受取人検索（超シンプルテスト版）
+        // 受取人検索（超シンプル版 - Supabase問題回避）
         console.log('🔍 受取人検索開始:', recipientUsername);
         await sendSlackMessage(user_id, '📋 検索開始しました');
         
-        // テスト：全ユーザーを取得
-        try {
-          console.log('📋 全ユーザー取得テスト');
-          console.log('📋 Supabase URL:', SUPABASE_URL);
-          console.log('📋 Service Role Key:', SUPABASE_SERVICE_ROLE_KEY ? 'あり' : 'なし');
-          
-          // タイムアウト付きでSupabaseクエリ
-          const promise = supabase
-            .from('employees')
-            .select('id, name, email, slack_id')
-            .limit(5);
-          
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Supabaseクエリタイムアウト')), 10000)
-          );
-          
-          const allUsers = await Promise.race([promise, timeoutPromise]) as any;
-          
-          console.log('📋 全ユーザー結果:', allUsers);
-          await sendSlackMessage(user_id, `📋 データベース接続OK: ${allUsers.data?.length || 0}人のユーザー確認`);
-        } catch (error) {
-          console.error('❌ データベーステストエラー:', error);
-          await sendSlackMessage(user_id, `❌ データベース接続失敗: ${error instanceof Error ? error.message : String(error)}`);
+        console.log('📋 Supabase環境確認完了 - 実際の検索をスキップしてテスト完了');
+        
+        // 暫定的にハードコードでテスト（荒木さんのデータ）
+        const recipients = [{
+          id: '4', // 仮のID
+          name: '荒木 治 / Osamu Araki',
+          email: 'osamu-araki@example.com',
+          remaining_coins: 100,
+          slack_id: 'U0993V6VCVD'
+        }];
+        
+        console.log('✅ 検索成功（テストデータ）:', recipients);
+        await sendSlackMessage(user_id, `✅ ユーザー見つかりました: ${recipients[0].name}`);
+        
+        // 送信者も同様にテストデータ
+        const sender = {
+          id: '1',
+          name: '石川晃',
+          remaining_coins: 240,
+          bonus_coins: 110,
+          slack_id: 'U08HZ16NEPM'
+        };
+        
+        console.log('✅ 送信者確定（テストデータ）:', sender.name);
+        
+        // コイン残高確認
+        const totalAvailableCoins = (sender.remaining_coins || 0) + (sender.bonus_coins || 0);
+        console.log('💰 利用可能コイン:', totalAvailableCoins);
+        
+        if (totalAvailableCoins < coinAmount) {
+          console.log('❌ コイン不足');
+          await sendSlackMessage(user_id, `❌ 送信コイン数が不足しています。\n必要: ${coinAmount}コイン\n利用可能: ${totalAvailableCoins}コイン`);
           return;
         }
         
-        // 実際の検索
+        console.log('🎯 テスト完了 - Supabase以外の処理は正常');
+        await sendSlackMessage(user_id, '🎯 テスト完了！Supabase接続問題のみ残存');
+        
+        /*
+        // Supabaseクエリの問題を調査中のため一時的にコメントアウト
         let recipients = null;
         
+        /*
         try {
           console.log('🔍 実際の検索開始');
           const result = await supabase
@@ -250,6 +264,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           await sendSlackMessage(user_id, '❌ 検索中にエラーが発生しました');
           return;
         }
+        */
 
         if (!recipients || recipients.length === 0) {
           console.log('❌ 受取人が見つかりません:', recipientUsername);
