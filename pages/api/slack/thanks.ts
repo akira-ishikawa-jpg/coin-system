@@ -139,6 +139,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('🔄 非同期処理開始');
       
       try {
+        // 進捗通知: 受取人検索開始
+        await sendSlackMessage(user_id, '🔍 ユーザー検索中...');
+        
         // 受取人をユーザー名で検索
         console.log('🔍 受取人検索:', recipientUsername);
         const { data: recipients, error: recipientError } = await supabase
@@ -148,7 +151,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (recipientError) {
           console.error('❌ 受取人検索エラー:', recipientError);
-          await sendSlackMessage(user_id, '❌ データベースエラーが発生しました。');
+          await sendSlackMessage(user_id, `❌ データベースエラーが発生しました。\nエラー詳細: ${recipientError.message}`);
           return;
         }
 
@@ -168,6 +171,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const recipient = recipients[0];
         console.log('✅ 受取人確定:', recipient.name);
 
+        // 進捗通知: 送信者確認
+        await sendSlackMessage(user_id, `✅ 受取人確定: ${recipient.name}\n🔍 送信者アカウント確認中...`);
+
         // 送信者をSlack IDで検索
         console.log('🔍 送信者検索:', user_id);
         const { data: senders, error: senderError } = await supabase
@@ -177,7 +183,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (senderError) {
           console.error('❌ 送信者検索エラー:', senderError);
-          await sendSlackMessage(user_id, '❌ データベースエラーが発生しました。');
+          await sendSlackMessage(user_id, `❌ データベースエラーが発生しました。\nエラー詳細: ${senderError.message}`);
           return;
         }
 
@@ -200,6 +206,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return;
         }
 
+        // 進捗通知: 取引実行
+        await sendSlackMessage(user_id, `💸 コイン送信実行中... (${coinAmount}コイン → ${recipient.name})`);
+
         // 取引記録
         console.log('💸 取引記録開始');
         const { error: transactionError } = await supabase
@@ -214,7 +223,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (transactionError) {
           console.error('❌ 取引記録エラー:', transactionError);
-          await sendSlackMessage(user_id, '❌ コイン送信に失敗しました。再度お試しください。');
+          await sendSlackMessage(user_id, `❌ コイン送信に失敗しました。\nエラー詳細: ${transactionError.message}\n再度お試しください。`);
           return;
         }
 
@@ -280,7 +289,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } catch (error) {
         console.error('❌ 非同期処理エラー:', error);
         try {
-          await sendSlackMessage(user_id, '❌ 処理中にエラーが発生しました。管理者にお問い合わせください。');
+          const errorMessage = error instanceof Error ? error.message : '不明なエラー';
+          await sendSlackMessage(user_id, `❌ 処理中にエラーが発生しました。\nエラー詳細: ${errorMessage}\n管理者にお問い合わせください。`);
         } catch (notificationError) {
           console.error('❌ エラー通知送信失敗:', notificationError);
         }
