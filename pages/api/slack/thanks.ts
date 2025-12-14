@@ -53,11 +53,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const user_id = body.user_id as string
   const user_name = body.user_name as string
 
-  // Debug: Log the actual text received
+  // Debug: Log the actual text received and parsed IDs
   await supabase.from('audit_logs').insert({ 
     actor_id: null, 
     action: 'slack_debug', 
-    payload: { received_text: text, user_id, user_name } 
+    payload: { 
+      received_text: text, 
+      user_id, 
+      user_name,
+      parsed_target_slack_id: targetSlackId,
+      parsed_coins: coins,
+      parsed_message: message
+    } 
   })
 
   // Try pattern with coins first: @user coins message
@@ -91,6 +98,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // find sender and receiver in employees
   const { data: senderData } = await supabase.from('employees').select('id,name,slack_id,email').eq('slack_id', user_id).limit(1).maybeSingle()
   const { data: receiverData } = await supabase.from('employees').select('id,name,slack_id,email').eq('slack_id', targetSlackId).limit(1).maybeSingle()
+
+  // Debug: Log search results
+  await supabase.from('audit_logs').insert({
+    actor_id: null,
+    action: 'slack_user_search_debug',
+    payload: {
+      searching_sender_slack_id: user_id,
+      found_sender: senderData ? { id: senderData.id, name: senderData.name, slack_id: senderData.slack_id } : null,
+      searching_receiver_slack_id: targetSlackId,
+      found_receiver: receiverData ? { id: receiverData.id, name: receiverData.name, slack_id: receiverData.slack_id } : null
+    }
+  })
 
   if (!senderData) {
     res.setHeader('Content-Type', 'application/json')
