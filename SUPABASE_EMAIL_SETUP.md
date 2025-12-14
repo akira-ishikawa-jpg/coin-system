@@ -1,31 +1,39 @@
 # Supabaseメールテンプレート設定ガイド
 
-## マジックリンクメールのカスタマイズ
+## マジックリンクメールのカスタマイズ手順
 
-1. **Supabaseダッシュボードにログイン**
-   - https://supabase.com にアクセス
-   - プロジェクトを選択
+### 1. Supabaseダッシュボードにアクセス
+- https://supabase.com にログイン
+- 対象プロジェクトを選択
 
-2. **認証設定に移動**
-   - サイドメニューから「Authentication」→「Settings」をクリック
+### 2. 認証設定に移動
+- 左サイドメニューから「Authentication」をクリック
+- 「Settings」タブをクリック
 
-3. **メールテンプレートを設定**
-   - 「Email Templates」セクションを探す
-   - 「Magic Link」テンプレートを選択
+### 3. Email Templates設定
+- 下にスクロールして「Email Templates」セクションを見つける
+- 「Magic Link」をクリックして展開
 
-4. **HTMLテンプレートを適用**
-   - `supabase/templates/magic-link.html`の内容をコピー
-   - Supabaseの「HTML Template」フィールドに貼り付け
-   
-5. **件名を設定**
-   ```
-   【コインシステム】ログインリンクをお送りします
-   ```
+### 4. テンプレート設定（重要！）
 
-6. **保存**
-   - 「Save」ボタンをクリックして設定を保存
+#### 4-1. 件名（Subject）
+```
+【コインシステム】ログインリンクをお送りします
+```
 
-## マジックリンク認証の動作確認
+#### 4-2. HTMLテンプレート
+- `supabase/templates/magic-link.html`の内容を全てコピー
+- 「Body (HTML)」フィールドに貼り付け
+
+#### 4-3. テキストテンプレート 
+- `supabase/templates/magic-link.txt`の内容を全てコピー
+- 「Body (Text)」フィールドに貼り付け
+
+### 5. 保存
+- **「Save」ボタンをクリック**（必須！）
+- 設定反映まで数分かかる場合があります
+
+## URL設定の確認
 
 マジックリンクが正常に動作するために、以下の設定も確認してください：
 
