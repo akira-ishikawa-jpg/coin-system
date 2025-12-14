@@ -112,7 +112,7 @@ export default function MyPage() {
     const weekStartDate = new Date(weekStart)
     const { data: sent } = await supabase
       .from('coin_transactions')
-      .select('coins, created_at')
+      .select('coins')
       .eq('sender_id', emp.id)
       .gte('created_at', weekStartDate.toISOString())
       .not('slack_payload', 'cs', '{"bonus":true}')
@@ -135,18 +135,8 @@ export default function MyPage() {
     const { data: recv } = await supabase.from('coin_transactions').select('coins').eq('receiver_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`).not('slack_payload', 'cs', '{"bonus":true}')
     setReceivedThisMonth((recv || []).reduce((s:any,r:any)=>s+(r.coins||0),0))
     
-    const { data: sentMonth } = await supabase.from('coin_transactions').select('coins, created_at').eq('sender_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`).not('slack_payload', 'cs', '{"bonus":true}')
-    const monthSentSum = (sentMonth || []).reduce((s:any,r:any)=>s+(r.coins||0),0)
-    setSentThisMonth(monthSentSum)
-
-    // デバッグ情報をコンソールに出力
-    console.log('デバッグ情報:', {
-      今週贈った分: sentSum,
-      今月贈った分: monthSentSum,
-      今週残コイン計算: `${defaultWeekly} - ${sentSum} = ${defaultWeekly - sentSum}`,
-      週データ: sent?.map(s => ({ coins: s.coins, created_at: s.created_at })),
-      月データ: sentMonth?.map(s => ({ coins: s.coins, created_at: s.created_at }))
-    })
+    const { data: sentMonth } = await supabase.from('coin_transactions').select('coins').eq('sender_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`).not('slack_payload', 'cs', '{"bonus":true}')
+    setSentThisMonth((sentMonth || []).reduce((s:any,r:any)=>s+(r.coins||0),0))
 
     // get transaction history (sent and received)
     const { data: txns } = await supabase
@@ -418,6 +408,10 @@ export default function MyPage() {
               <div className="text-xs text-gray-600 mb-1">今月の受取</div>
               <div className="text-xl font-bold text-teal-600">{receivedThisMonth}</div>
             </div>
+            <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 transition-all duration-300 hover:shadow-lg hover:scale-105">
+              <div className="text-xs text-gray-600 mb-1">今月の贈呈</div>
+              <div className="text-xl font-bold text-teal-600">{sentThisMonth}</div>
+            </div>
           </div>
           
           {/* Slack ID設定 */}
@@ -485,10 +479,6 @@ export default function MyPage() {
                   💡 Slack IDはSlackアプリで自分のプロフィール → 「その他」→ 「メンバーIDをコピー」で取得できます
                 </p>
               </div>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 transition-all duration-300 hover:shadow-lg hover:scale-105">
-              <div className="text-xs text-gray-600 mb-1">今月の贈呈</div>
-              <div className="text-xl font-bold text-teal-600">{sentThisMonth}</div>
             </div>
           </div>
 
