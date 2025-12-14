@@ -48,15 +48,19 @@ function getWeekStart(date = new Date()) {
 
 // Slack APIヘルパー関数
 async function sendSlackMessage(userId: string, text: string) {
+  console.log('📤 DM送信 (デバッグ):', { userId, text });
+  
+  // Slackトークンが無効な場合はログ出力のみ
+  if (!SLACK_BOT_TOKEN || SLACK_BOT_TOKEN === 'xoxb-dummy') {
+    console.log('⚠️ Slackトークンが無効 - DMスキップ (ログのみ)');
+    return Promise.resolve(); // 即座にresolve
+  }
+  
+  console.log('📤 実際のSlack API呼び出しは現在無効化中');
+  return Promise.resolve(); // 全てのSlack API呼び出しを無効化
+  
+  /*
   try {
-    console.log('📤 DM送信 (デバッグ):', { userId, text });
-    
-    // Slackトークンが無効な場合はログ出力のみ
-    if (!SLACK_BOT_TOKEN || SLACK_BOT_TOKEN === 'xoxb-dummy') {
-      console.log('⚠️ Slackトークンが無効 - DMスキップ (ログのみ)');
-      return Promise.resolve(); // 即座にresolve
-    }
-    
     // タイムアウト付きでSlack API呼び出し
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000); // 2秒タイムアウト
@@ -79,18 +83,23 @@ async function sendSlackMessage(userId: string, text: string) {
     console.error('❌ Slack DM送信エラー (続行):', error instanceof Error ? error.message : String(error));
     // エラーでも処理を続行
   }
+  */
 }
 
 async function postToSlack(channelId: string, text: string) {
+  console.log('📣 チャンネル投稿 (デバッグ):', { channelId, text });
+  
+  // Slackトークンが無効な場合はログ出力のみ
+  if (!SLACK_BOT_TOKEN || SLACK_BOT_TOKEN === 'xoxb-dummy') {
+    console.log('⚠️ Slackトークンが無効 - チャンネル投稿スキップ (ログのみ)');
+    return Promise.resolve(); // 即座にresolve
+  }
+  
+  console.log('📣 実際のSlack API呼び出しは現在無効化中');
+  return Promise.resolve(); // 全てのSlack API呼び出しを無効化
+  
+  /*
   try {
-    console.log('📣 チャンネル投稿 (デバッグ):', { channelId, text });
-    
-    // Slackトークンが無効な場合はログ出力のみ
-    if (!SLACK_BOT_TOKEN || SLACK_BOT_TOKEN === 'xoxb-dummy') {
-      console.log('⚠️ Slackトークンが無効 - チャンネル投稿スキップ (ログのみ)');
-      return Promise.resolve(); // 即座にresolve
-    }
-    
     // タイムアウト付きでSlack API呼び出し
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000); // 2秒タイムアウト
@@ -113,6 +122,7 @@ async function postToSlack(channelId: string, text: string) {
     console.error('❌ Slackチャンネル投稿エラー (続行):', error instanceof Error ? error.message : String(error));
     // エラーでも処理を続行
   }
+  */
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
