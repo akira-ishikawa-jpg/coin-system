@@ -179,7 +179,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
     }
 
-    return res.status(200).json()
+    return res.status(200).json({ ok: true })
 
   } catch (error: any) {
     console.error('Slack command error:', error)
