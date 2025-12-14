@@ -226,12 +226,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.log('✅ 送信者確定（テストデータ）:', testSender.name);
         
         // コイン残高確認
-        const totalAvailableCoins = (testSender.remaining_coins || 0) + (testSender.bonus_coins || 0);
-        console.log('💰 利用可能コイン:', totalAvailableCoins);
+        const testTotalCoins = (testSender.remaining_coins || 0) + (testSender.bonus_coins || 0);
+        console.log('💰 利用可能コイン:', testTotalCoins);
         
-        if (totalAvailableCoins < coinAmount) {
+        if (testTotalCoins < coinAmount) {
           console.log('❌ コイン不足');
-          await sendSlackMessage(user_id, `❌ 送信コイン数が不足しています。\n必要: ${coinAmount}コイン\n利用可能: ${totalAvailableCoins}コイン`);
+          await sendSlackMessage(user_id, `❌ 送信コイン数が不足しています。\n必要: ${coinAmount}コイン\n利用可能: ${testTotalCoins}コイン`);
           return;
         }
         
