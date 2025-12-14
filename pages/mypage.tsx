@@ -27,6 +27,9 @@ export default function MyPage() {
   const [notificationEnabled, setNotificationEnabled] = useState(false)
   const [notificationSupported, setNotificationSupported] = useState(false)
   const [monthlyData, setMonthlyData] = useState<any[]>([])
+  const [editingSlackId, setEditingSlackId] = useState(false)
+  const [newSlackId, setNewSlackId] = useState('')
+  const [slackUpdateMessage, setSlackUpdateMessage] = useState('')
 
   useEffect(() => {
     load()
