@@ -3,7 +3,6 @@ import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 import querystring from 'querystring'
 import { detectAnomalies } from '../../../lib/anomalyDetection'
-import { sendNotifications } from '../../../lib/notifications'
 
 export const config = { api: { bodyParser: false } }
 
