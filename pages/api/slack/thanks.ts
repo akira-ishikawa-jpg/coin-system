@@ -216,7 +216,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             setTimeout(() => reject(new Error('Supabaseクエリタイムアウト')), 10000)
           );
           
-          const allUsers = await Promise.race([promise, timeoutPromise]);
+          const allUsers = await Promise.race([promise, timeoutPromise]) as any;
           
           console.log('📋 全ユーザー結果:', allUsers);
           await sendSlackMessage(user_id, `📋 データベース接続OK: ${allUsers.data?.length || 0}人のユーザー確認`);
