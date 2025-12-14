@@ -168,94 +168,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // 進捗通知: 受取人検索開始
         await sendSlackMessage(user_id, '🔍 ユーザー検索中...');
         
-        // 受取人をユーザー名で検索（シンプル・確実）
+        // 受取人検索（超シンプルテスト版）
         console.log('🔍 受取人検索開始:', recipientUsername);
+        await sendSlackMessage(user_id, '📋 検索開始しました');
         
-        let recipients = null;
-        let recipientError = null;
-        
-        // 1. まずSlack IDで直接検索
+        // テスト：全ユーザーを取得
         try {
-          console.log('🔍 Slack ID検索:', recipientUsername);
-          const slackIdResult = await supabase
+          console.log('📋 全ユーザー取得テスト');
+          const allUsers = await supabase
+            .from('employees')
+            .select('id, name, email, slack_id')
+            .limit(5);
+          
+          console.log('📋 全ユーザー結果:', allUsers);
+          await sendSlackMessage(user_id, `📋 データベース接続OK: ${allUsers.data?.length || 0}人のユーザー確認`);
+        } catch (error) {
+          console.error('❌ データベーステストエラー:', error);
+          await sendSlackMessage(user_id, '❌ データベース接続失敗');
+          return;
+        }
+        
+        // 実際の検索
+        let recipients = null;
+        
+        try {
+          console.log('🔍 実際の検索開始');
+          const result = await supabase
             .from('employees')
             .select('id, name, email, remaining_coins, slack_id')
-            .eq('slack_id', recipientUsername);
+            .ilike('name', `%osamu%`);
           
-          console.log('🔍 Slack ID検索結果:', slackIdResult);
+          console.log('🔍 検索結果:', result);
           
-          if (slackIdResult.error) {
-            console.error('❌ Slack ID検索エラー:', slackIdResult.error);
-          } else if (slackIdResult.data && slackIdResult.data.length > 0) {
-            console.log('✅ Slack ID検索成功:', slackIdResult.data);
-            recipients = slackIdResult.data;
+          if (result.data && result.data.length > 0) {
+            recipients = result.data;
+            await sendSlackMessage(user_id, `✅ 検索成功: ${recipients.length}人見つかりました`);
+          } else {
+            await sendSlackMessage(user_id, '❌ ユーザーが見つかりませんでした');
+            return;
           }
         } catch (error) {
-          console.error('❌ Slack ID検索で例外:', error);
-        }
-        
-        // 2. Slack IDで見つからない場合、emailで検索
-        if (!recipients) {
-          try {
-            console.log('🔍 Email検索:', recipientUsername);
-            const emailResult = await supabase
-              .from('employees')
-              .select('id, name, email, remaining_coins, slack_id')
-              .ilike('email', `%${recipientUsername}%`);
-            
-            console.log('🔍 Email検索結果:', emailResult);
-            
-            if (emailResult.error) {
-              console.error('❌ Email検索エラー:', emailResult.error);
-            } else if (emailResult.data && emailResult.data.length > 0) {
-              console.log('✅ Email検索成功:', emailResult.data);
-              recipients = emailResult.data;
-            }
-          } catch (error) {
-            console.error('❌ Email検索で例外:', error);
-          }
-        }
-        
-        // 3. それでも見つからない場合、nameで検索
-        if (!recipients) {
-          const searchPatterns = [
-            recipientUsername,
-            `%${recipientUsername}%`,
-            `${recipientUsername}%`,
-            `%${recipientUsername}`,
-          ];
-          
-          for (const pattern of searchPatterns) {
-            try {
-              console.log('🔍 Name検索パターン:', pattern);
-              const nameResult = await supabase
-                .from('employees')
-                .select('id, name, email, remaining_coins, slack_id')
-                .ilike('name', pattern);
-              
-              console.log('🔍 Name検索結果:', nameResult);
-              
-              if (nameResult.error) {
-                console.error('❌ Name検索エラー:', nameResult.error);
-                recipientError = nameResult.error;
-                continue;
-              }
-              
-              if (nameResult.data && nameResult.data.length > 0) {
-                console.log('✅ Name検索成功:', nameResult.data);
-                recipients = nameResult.data;
-                break;
-              }
-            } catch (error) {
-              console.error('❌ Name検索で例外:', error);
-              recipientError = error;
-            }
-          }
-        }
-
-        if (!recipients && recipientError) {
-          console.error('❌ 全ての検索でエラー:', recipientError);
-          await sendSlackMessage(user_id, '❌ ユーザー検索中にエラーが発生しました。');
+          console.error('❌ 検索エラー:', error);
+          await sendSlackMessage(user_id, '❌ 検索中にエラーが発生しました');
           return;
         }
 
