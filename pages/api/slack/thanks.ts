@@ -117,7 +117,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('📝 リクエスト解析:', { text, user_id, user_name, channel_id });
 
     // 3. テキスト形式の基本チェック（軽量）
-    const match = text.match(/^@(\S+)\s+(\d+)(?:\s+(.*))?$/);
+    // パターン1: @名前 数字 メッセージ (名前にスペース/記号を含む)
+    let match = text.match(/^@(.+?)\s+(\d+)(?:\s+(.*))?$/);
     
     if (!match) {
       console.log('❌ 形式エラー:', text);
@@ -127,8 +128,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const [, recipientUsername, coinAmountStr, message] = match;
+    let [, recipientUsername, coinAmountStr, message] = match;
+    
+    // ユーザー名から先頭の@を除去（もしあれば）
+    recipientUsername = recipientUsername.replace(/^@/, '').trim();
+    
     const coinAmount = parseInt(coinAmountStr, 10);
+
+    console.log('🎯 パース結果:', { 
+      original: text, 
+      recipientUsername: `"${recipientUsername}"`, 
+      coinAmount, 
+      message: `"${message || ''}"` 
+    });
 
     if (isNaN(coinAmount) || coinAmount <= 0) {
       console.log('❌ コイン数エラー:', coinAmountStr);
