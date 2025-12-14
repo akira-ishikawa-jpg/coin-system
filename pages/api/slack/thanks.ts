@@ -215,7 +215,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         await sendSlackMessage(user_id, `✅ ユーザー見つかりました: ${recipients[0].name}`);
         
         // 送信者も同様にテストデータ
-        const sender = {
+        const testSender = {
           id: '1',
           name: '石川晃',
           remaining_coins: 240,
@@ -223,10 +223,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           slack_id: 'U08HZ16NEPM'
         };
         
-        console.log('✅ 送信者確定（テストデータ）:', sender.name);
+        console.log('✅ 送信者確定（テストデータ）:', testSender.name);
         
         // コイン残高確認
-        const totalAvailableCoins = (sender.remaining_coins || 0) + (sender.bonus_coins || 0);
+        const totalAvailableCoins = (testSender.remaining_coins || 0) + (testSender.bonus_coins || 0);
         console.log('💰 利用可能コイン:', totalAvailableCoins);
         
         if (totalAvailableCoins < coinAmount) {
