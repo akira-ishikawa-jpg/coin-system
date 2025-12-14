@@ -175,32 +175,58 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         let recipientError = null;
         
         // 1. まずSlack IDで直接検索（最も確実）
-        console.log('🔍 Slack ID検索:', recipientUsername);
-        let result = await supabase
-          .from('employees')
-          .select('id, name, email, remaining_coins, slack_id')
-          .eq('slack_id', recipientUsername);
+        console.log('🔍 Slack ID検索開始:', recipientUsername);
         
-        if (result.error) {
-          console.error('❌ Slack ID検索エラー:', result.error);
-        } else if (result.data && result.data.length > 0) {
-          console.log('✅ Slack ID検索成功:', result.data);
-          recipients = result.data;
+        try {
+          let result = await Promise.race([
+            supabase
+              .from('employees')
+              .select('id, name, email, remaining_coins, slack_id')
+              .eq('slack_id', recipientUsername),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Slack ID検索タイムアウト')), 5000)
+            )
+          ]);
+          
+          console.log('🔍 Slack ID検索結果:', result);
+          
+          if (result.error) {
+            console.error('❌ Slack ID検索エラー:', result.error);
+          } else if (result.data && result.data.length > 0) {
+            console.log('✅ Slack ID検索成功:', result.data);
+            recipients = result.data;
+          }
+        } catch (error) {
+          console.error('❌ Slack ID検索で例外:', error);
+          await sendSlackMessage(user_id, `⚠️ Slack ID検索でエラー: ${error.message}`);
         }
         
         // 2. Slack IDで見つからない場合、emailで検索
         if (!recipients) {
-          console.log('🔍 Email検索:', recipientUsername);
-          result = await supabase
-            .from('employees')
-            .select('id, name, email, remaining_coins, slack_id')
-            .ilike('email', `%${recipientUsername}%`);
+          console.log('🔍 Email検索開始:', recipientUsername);
           
-          if (result.error) {
-            console.error('❌ Email検索エラー:', result.error);
-          } else if (result.data && result.data.length > 0) {
-            console.log('✅ Email検索成功:', result.data);
-            recipients = result.data;
+          try {
+            result = await Promise.race([
+              supabase
+                .from('employees')
+                .select('id, name, email, remaining_coins, slack_id')
+                .ilike('email', `%${recipientUsername}%`),
+              new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Email検索タイムアウト')), 5000)
+              )
+            ]);
+            
+            console.log('🔍 Email検索結果:', result);
+            
+            if (result.error) {
+              console.error('❌ Email検索エラー:', result.error);
+            } else if (result.data && result.data.length > 0) {
+              console.log('✅ Email検索成功:', result.data);
+              recipients = result.data;
+            }
+          } catch (error) {
+            console.error('❌ Email検索で例外:', error);
+            await sendSlackMessage(user_id, `⚠️ Email検索でエラー: ${error.message}`);
           }
         }
         
