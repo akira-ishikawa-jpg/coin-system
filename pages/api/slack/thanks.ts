@@ -203,16 +203,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // テスト：全ユーザーを取得
         try {
           console.log('📋 全ユーザー取得テスト');
-          const allUsers = await supabase
+          console.log('📋 Supabase URL:', SUPABASE_URL);
+          console.log('📋 Service Role Key:', SUPABASE_SERVICE_ROLE_KEY ? 'あり' : 'なし');
+          
+          // タイムアウト付きでSupabaseクエリ
+          const promise = supabase
             .from('employees')
             .select('id, name, email, slack_id')
             .limit(5);
+          
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Supabaseクエリタイムアウト')), 10000)
+          );
+          
+          const allUsers = await Promise.race([promise, timeoutPromise]);
           
           console.log('📋 全ユーザー結果:', allUsers);
           await sendSlackMessage(user_id, `📋 データベース接続OK: ${allUsers.data?.length || 0}人のユーザー確認`);
         } catch (error) {
           console.error('❌ データベーステストエラー:', error);
-          await sendSlackMessage(user_id, '❌ データベース接続失敗');
+          await sendSlackMessage(user_id, `❌ データベース接続失敗: ${error instanceof Error ? error.message : String(error)}`);
           return;
         }
         
