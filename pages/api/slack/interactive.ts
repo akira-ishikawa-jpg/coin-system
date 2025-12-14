@@ -28,7 +28,14 @@ function verifySlackRequest(timestamp: string, signature: string, body: string):
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  console.log('=== SLACK INTERACTIVE REQUEST START ===')
+  console.log('Method:', req.method)
+  console.log('Headers:', JSON.stringify(req.headers, null, 2))
+  console.log('Body type:', typeof req.body)
+  console.log('Raw body:', req.body)
+  
   if (req.method !== 'POST') {
+    console.log('❌ Method not allowed:', req.method)
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
@@ -42,12 +49,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // }
   
   // 一時的に署名検証をスキップして処理を続行
-  console.log('Signature verification skipped for testing')
+  console.log('✅ Signature verification skipped for testing')
 
   try {
+    console.log('🔍 Parsing payload...')
     const payload = typeof req.body.payload === 'string' 
       ? JSON.parse(req.body.payload) 
       : req.body.payload
+    
+    console.log('📦 Parsed payload:', JSON.stringify(payload, null, 2))
 
     // URL検証チャレンジ（初回のみ）
     if (payload.type === 'url_verification') {
@@ -265,6 +275,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // 非同期でSlack通知を実行（awaitしない）
       sendSlackNotifications()
 
+      console.log('✅ Returning success response to Slack modal')
       return res.status(200).json({ ok: true })
     }
 
@@ -363,7 +374,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ ok: true })
 
   } catch (error: any) {
-    console.error('Slack interactive error:', error)
+    console.error('❌ Slack interactive error:', error)
+    console.error('Error stack:', error.stack)
     return res.status(200).json({
       text: '❌ エラーが発生しました: ' + error.message
     })
