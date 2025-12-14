@@ -17,7 +17,9 @@ function verifySlackRequest(req: NextApiRequest): boolean {
   const time = Math.floor(Date.now() / 1000)
   if (Math.abs(time - parseInt(timestamp)) > 300) return false
   
-  const sigBasestring = `v0:${timestamp}:${JSON.stringify(req.body)}`
+  // Slackからのリクエストボディを文字列として取得
+  const rawBody = (req as any).rawBody || new URLSearchParams(req.body).toString()
+  const sigBasestring = `v0:${timestamp}:${rawBody}`
   const mySignature = 'v0=' + crypto
     .createHmac('sha256', SLACK_SIGNING_SECRET)
     .update(sigBasestring, 'utf8')
