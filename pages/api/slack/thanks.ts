@@ -49,6 +49,13 @@ function getWeekStart(date = new Date()) {
 // Slack APIヘルパー関数
 async function sendSlackMessage(userId: string, text: string) {
   try {
+    console.log('📤 DM送信 (デバッグ):', { userId, text });
+    
+    if (!SLACK_BOT_TOKEN || SLACK_BOT_TOKEN === 'xoxb-dummy') {
+      console.log('⚠️ Slackトークンが無効 - DMスキップ');
+      return;
+    }
+    
     await fetch('https://slack.com/api/chat.postMessage', {
       method: 'POST',
       headers: {
@@ -67,6 +74,13 @@ async function sendSlackMessage(userId: string, text: string) {
 
 async function postToSlack(channelId: string, text: string) {
   try {
+    console.log('📣 チャンネル投稿 (デバッグ):', { channelId, text });
+    
+    if (!SLACK_BOT_TOKEN || SLACK_BOT_TOKEN === 'xoxb-dummy') {
+      console.log('⚠️ Slackトークンが無効 - チャンネル投稿スキップ');
+      return;
+    }
+    
     await fetch('https://slack.com/api/chat.postMessage', {
       method: 'POST',
       headers: {
