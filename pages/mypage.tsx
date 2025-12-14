@@ -135,8 +135,18 @@ export default function MyPage() {
     const { data: recv } = await supabase.from('coin_transactions').select('coins').eq('receiver_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`).not('slack_payload', 'cs', '{"bonus":true}')
     setReceivedThisMonth((recv || []).reduce((s:any,r:any)=>s+(r.coins||0),0))
     
-    const { data: sentMonth } = await supabase.from('coin_transactions').select('coins').eq('sender_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`).not('slack_payload', 'cs', '{"bonus":true}')
-    setSentThisMonth((sentMonth || []).reduce((s:any,r:any)=>s+(r.coins||0),0))
+    const { data: sentMonth } = await supabase.from('coin_transactions').select('coins, created_at').eq('sender_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`).not('slack_payload', 'cs', '{"bonus":true}')
+    const monthSentSum = (sentMonth || []).reduce((s:any,r:any)=>s+(r.coins||0),0)
+    setSentThisMonth(monthSentSum)
+
+    // デバッグ情報をコンソールに出力
+    console.log('デバッグ情報:', {
+      今週贈った分: sentSum,
+      今月贈った分: monthSentSum,
+      今週残コイン計算: `${defaultWeekly} - ${sentSum} = ${defaultWeekly - sentSum}`,
+      週データ: sent?.map(s => ({ coins: s.coins, created_at: s.created_at })),
+      月データ: sentMonth?.map(s => ({ coins: s.coins, created_at: s.created_at }))
+    })
 
     // get transaction history (sent and received)
     const { data: txns } = await supabase
