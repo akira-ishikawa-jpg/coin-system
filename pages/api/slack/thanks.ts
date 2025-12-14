@@ -51,10 +51,15 @@ async function sendSlackMessage(userId: string, text: string) {
   try {
     console.log('📤 DM送信 (デバッグ):', { userId, text });
     
+    // Slackトークンが無効な場合はログ出力のみ
     if (!SLACK_BOT_TOKEN || SLACK_BOT_TOKEN === 'xoxb-dummy') {
-      console.log('⚠️ Slackトークンが無効 - DMスキップ');
-      return;
+      console.log('⚠️ Slackトークンが無効 - DMスキップ (ログのみ)');
+      return Promise.resolve(); // 即座にresolve
     }
+    
+    // タイムアウト付きでSlack API呼び出し
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2秒タイムアウト
     
     await fetch('https://slack.com/api/chat.postMessage', {
       method: 'POST',
@@ -65,10 +70,14 @@ async function sendSlackMessage(userId: string, text: string) {
       body: JSON.stringify({
         channel: userId,
         text: text
-      })
+      }),
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
   } catch (error) {
-    console.error('❌ Slack DM送信エラー:', error);
+    console.error('❌ Slack DM送信エラー (続行):', error.message);
+    // エラーでも処理を続行
   }
 }
 
@@ -76,10 +85,15 @@ async function postToSlack(channelId: string, text: string) {
   try {
     console.log('📣 チャンネル投稿 (デバッグ):', { channelId, text });
     
+    // Slackトークンが無効な場合はログ出力のみ
     if (!SLACK_BOT_TOKEN || SLACK_BOT_TOKEN === 'xoxb-dummy') {
-      console.log('⚠️ Slackトークンが無効 - チャンネル投稿スキップ');
-      return;
+      console.log('⚠️ Slackトークンが無効 - チャンネル投稿スキップ (ログのみ)');
+      return Promise.resolve(); // 即座にresolve
     }
+    
+    // タイムアウト付きでSlack API呼び出し
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2秒タイムアウト
     
     await fetch('https://slack.com/api/chat.postMessage', {
       method: 'POST',
@@ -90,10 +104,14 @@ async function postToSlack(channelId: string, text: string) {
       body: JSON.stringify({
         channel: channelId,
         text: text
-      })
+      }),
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
   } catch (error) {
-    console.error('❌ Slackチャンネル投稿エラー:', error);
+    console.error('❌ Slackチャンネル投稿エラー (続行):', error.message);
+    // エラーでも処理を続行
   }
 }
 
