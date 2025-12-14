@@ -276,7 +276,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       sendSlackNotifications()
 
       console.log('✅ Returning success response to Slack modal')
-      return res.status(200).json({ ok: true })
+      return res.status(200).json({ response_action: "clear" })
     }
 
     // ボタンクリック処理
