@@ -98,112 +98,87 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return
   }
 
-  // find sender and receiver in employees
-  const { data: senderData } = await supabase.from('employees').select('id,name,slack_id,email').eq('slack_id', user_id).limit(1).maybeSingle()
-  
-  let receiverData: any
-  if (isUsernameFormat) {
-    // Search by username patterns (try different variations)
-    const possibleUsernames = [
-      targetSlackId.toLowerCase(),
-      targetSlackId.replace(/-/g, ''),
-      targetSlackId.replace(/_/g, ''),
-      targetSlackId.replace(/[._-]/g, '')
-    ]
-    
-    let found = false
-    for (const username of possibleUsernames) {
-      const { data } = await supabase.from('employees')
-        .select('id,name,slack_id,email')
-        .or(`email.ilike.%${username}%,name.ilike.%${username}%`)
-        .limit(1)
-        .maybeSingle()
-      
-      if (data) {
-        receiverData = data
-        found = true
-        break
-      }
-    }
-    
-    if (!found) {
-      res.setHeader('Content-Type', 'application/json')
-      res.status(200).json({ response_type: 'ephemeral', text: `ユーザー「${targetSlackId}」が見つかりません。正しいSlack IDまたはユーザー名を使用してください。` })
-      return
-    }
-  } else {
-    // Search by Slack ID
-    const { data } = await supabase.from('employees').select('id,name,slack_id,email').eq('slack_id', targetSlackId).limit(1).maybeSingle()
-    receiverData = data
-  }
-
-  // Debug: Log search results
-  await supabase.from('audit_logs').insert({
-    actor_id: null,
-    action: 'slack_user_search_debug',
-    payload: {
-      searching_sender_slack_id: user_id,
-      found_sender: senderData ? { id: senderData.id, name: senderData.name, slack_id: senderData.slack_id } : null,
-      searching_receiver_slack_id: targetSlackId,
-      found_receiver: receiverData ? { id: receiverData.id, name: receiverData.name, slack_id: receiverData.slack_id } : null
-    }
-  })
-
-  if (!senderData) {
-    res.setHeader('Content-Type', 'application/json')
-    res.status(200).json({ response_type: 'ephemeral', text: '送信者が登録されていません。管理者に連絡してください。' })
-    return
-  }
-  if (!receiverData) {
-    res.setHeader('Content-Type', 'application/json')
-    res.status(200).json({ response_type: 'ephemeral', text: '受信者が登録されていません。管理者に連絡してください。' })
-    return
-  }
-
-  // Check weekly remaining coins
-  const weekStart = getWeekStart()
-  const { data: sentTx } = await supabase.from('coin_transactions').select('coins').eq('sender_id', senderData.id).eq('week_start', weekStart).not('slack_payload', 'cs', '{"bonus":true}')
-  const sentSum = (sentTx || []).reduce((s: number, r: any) => s + (r.coins || 0), 0)
-
-  const { data: setting } = await supabase.from('settings').select('value').eq('key', 'default_weekly_coins').limit(1).maybeSingle()
-  const defaultWeekly = setting ? parseInt(setting.value, 10) : 250
-  const remaining = defaultWeekly - sentSum
-
-  if (coins > remaining) {
-    res.setHeader('Content-Type', 'application/json')
-    res.status(200).json({ response_type: 'ephemeral', text: `残コインが不足しています。残り: ${remaining} コイン` })
-    return
-  }
-
-  // prepare transaction payload
-  const insertPayload = {
-    sender_id: senderData.id,
-    receiver_id: receiverData.id,
-    coins,
-    message,
-    emoji: '',
-    week_start: weekStart,
-    slack_payload: { from_slack_user: user_id, raw_text: text }
-  }
-
-  // insert transaction
-  const { error: insertError } = await supabase.from('coin_transactions').insert(insertPayload)
-  if (insertError) {
-    res.setHeader('Content-Type', 'application/json')
-    res.status(500).json({ response_type: 'ephemeral', text: '送信処理に失敗しました。' })
-    return
-  }
-
-  // 異常検知を実行
-  const { detectAnomalies } = await import('../../../lib/anomalyDetection')
-  await detectAnomalies(senderData.id, receiverData.id, coins, weekStart)
-
-  // 先にSlackに成功レスポンスを返す（3秒以内に必須）
+  // 即座にSlackに成功レスポンスを返す（全ての重い処理前に）
   res.setHeader('Content-Type', 'application/json')
-  res.status(200).json({ response_type: 'in_channel', text: `@${user_name} が ${receiverData.name} に ${coins} コインを送りました。` })
+  res.status(200).json({ response_type: 'in_channel', text: `コイン送信処理を開始しました...` })
 
-  // 重い処理（チャンネル投稿・DM送信）は非同期で実行
+  // 全ての処理を非同期で実行
   setImmediate(async () => {
+    try {
+      // find sender and receiver in employees
+      const { data: senderData } = await supabase.from('employees').select('id,name,slack_id,email').eq('slack_id', user_id).limit(1).maybeSingle()
+      
+      let receiverData: any
+      if (isUsernameFormat) {
+        // Search by username patterns (try different variations)
+        const possibleUsernames = [
+          targetSlackId.toLowerCase(),
+          targetSlackId.replace(/-/g, ''),
+          targetSlackId.replace(/_/g, ''),
+          targetSlackId.replace(/[._-]/g, '')
+        ]
+        
+        let found = false
+        for (const username of possibleUsernames) {
+          const { data } = await supabase.from('employees')
+            .select('id,name,slack_id,email')
+            .or(`email.ilike.%${username}%,name.ilike.%${username}%`)
+            .limit(1)
+            .maybeSingle()
+          
+          if (data) {
+            receiverData = data
+            found = true
+            break
+          }
+        }
+        
+        if (!found) {
+          return
+        }
+      } else {
+        // Search by Slack ID
+        const { data } = await supabase.from('employees').select('id,name,slack_id,email').eq('slack_id', targetSlackId).limit(1).maybeSingle()
+        receiverData = data
+      }
+
+      if (!senderData || !receiverData) {
+        return
+      }
+
+      // Check weekly remaining coins
+      const weekStart = getWeekStart()
+      const { data: sentTx } = await supabase.from('coin_transactions').select('coins').eq('sender_id', senderData.id).eq('week_start', weekStart).not('slack_payload', 'cs', '{"bonus":true}')
+      const sentSum = (sentTx || []).reduce((s: number, r: any) => s + (r.coins || 0), 0)
+
+      const { data: setting } = await supabase.from('settings').select('value').eq('key', 'default_weekly_coins').limit(1).maybeSingle()
+      const defaultWeekly = setting ? parseInt(setting.value, 10) : 250
+      const remaining = defaultWeekly - sentSum
+
+      if (coins > remaining) {
+        return
+      }
+
+      // prepare transaction payload
+      const insertPayload = {
+        sender_id: senderData.id,
+        receiver_id: receiverData.id,
+        coins,
+        message,
+        emoji: '',
+        week_start: weekStart,
+        slack_payload: { from_slack_user: user_id, raw_text: text }
+      }
+
+      // insert transaction
+      const { error: insertError } = await supabase.from('coin_transactions').insert(insertPayload)
+      if (insertError) {
+        return
+      }
+
+      // 異常検知を実行
+      const { detectAnomalies } = await import('../../../lib/anomalyDetection')
+      await detectAnomalies(senderData.id, receiverData.id, coins, weekStart)
     // Send message to channel with like button
     const SLACK_CHANNEL_ID = process.env.SLACK_CHANNEL_ID || ''
     let messageTs = ''
@@ -274,6 +249,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch (err) {
       // log but continue
       await supabase.from('audit_logs').insert({ actor_id: senderData.id, action: 'slack_dm_failed', payload: { error: String(err) } })
+    }
+    } catch (error) {
+      // Log any errors in background processing
+      await supabase.from('audit_logs').insert({
+        actor_id: null,
+        action: 'slack_background_error',
+        payload: { error: String(error) }
+      })
     }
   })
 }
