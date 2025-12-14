@@ -62,23 +62,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       user_id, 
       user_name,
       parsed_target_slack_id: targetSlackId,
+      is_username_format: isUsernameFormat,
       parsed_coins: coins,
       parsed_message: message
     } 
   })
 
-  // Try pattern with coins first: @user coins message
-  let m = text.match(/<@([A-Z0-9]+)>\s+(\d+)\s*(.*)/s)
-  let targetSlackId: string, coins: number, message: string
+  // Try pattern with coins first: <@USER_ID> coins message or @username coins message
+  let m = text.match(/<@([A-Z0-9]+)>\s+(\d+)\s*(.*)/s) || text.match(/@([a-zA-Z0-9\-_.]+)\s+(\d+)\s*(.*)/s)
+  let targetSlackId: string, coins: number, message: string, isUsernameFormat = false
   
   if (m) {
     // Pattern with explicit coins
     targetSlackId = m[1]
     coins = parseInt(m[2], 10)
     message = m[3] || ''
+    isUsernameFormat = !targetSlackId.match(/^[A-Z0-9]+$/) // Check if it's a username instead of Slack ID
   } else {
-    // Try pattern without coins: @user message (default to 5 coins)
-    m = text.match(/<@([A-Z0-9]+)>\s*(.*)/s)
+    // Try pattern without coins: <@USER_ID> message or @username message (default to 5 coins)
+    m = text.match(/<@([A-Z0-9]+)>\s*(.*)/s) || text.match(/@([a-zA-Z0-9\-_.]+)\s*(.*)/s)
     if (!m) {
       res.setHeader('Content-Type', 'application/json')
       res.status(200).json({ response_type: 'ephemeral', text: `使い方: /thanks @相手 [コイン数] メッセージ\n例: /thanks @田中さん ありがとう！\n例: /thanks @田中さん 10 いつもありがとう！\n\nデバッグ: "${text}"` })
@@ -87,6 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     targetSlackId = m[1]
     coins = 5 // デフォルト5コイン
     message = m[2] || ''
+    isUsernameFormat = !targetSlackId.match(/^[A-Z0-9]+$/) // Check if it's a username instead of Slack ID
   }
 
   if (isNaN(coins) || coins <= 0) {
@@ -97,7 +100,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // find sender and receiver in employees
   const { data: senderData } = await supabase.from('employees').select('id,name,slack_id,email').eq('slack_id', user_id).limit(1).maybeSingle()
-  const { data: receiverData } = await supabase.from('employees').select('id,name,slack_id,email').eq('slack_id', targetSlackId).limit(1).maybeSingle()
+  
+  let receiverData: any
+  if (isUsernameFormat) {
+    // Search by username patterns (try different variations)
+    const possibleUsernames = [
+      targetSlackId.toLowerCase(),
+      targetSlackId.replace(/-/g, ''),
+      targetSlackId.replace(/_/g, ''),
+      targetSlackId.replace(/[._-]/g, '')
+    ]
+    
+    let found = false
+    for (const username of possibleUsernames) {
+      const { data } = await supabase.from('employees')
+        .select('id,name,slack_id,email')
+        .or(`email.ilike.%${username}%,name.ilike.%${username}%`)
+        .limit(1)
+        .maybeSingle()
+      
+      if (data) {
+        receiverData = data
+        found = true
+        break
+      }
+    }
+    
+    if (!found) {
+      res.setHeader('Content-Type', 'application/json')
+      res.status(200).json({ response_type: 'ephemeral', text: `ユーザー「${targetSlackId}」が見つかりません。正しいSlack IDまたはユーザー名を使用してください。` })
+      return
+    }
+  } else {
+    // Search by Slack ID
+    const { data } = await supabase.from('employees').select('id,name,slack_id,email').eq('slack_id', targetSlackId).limit(1).maybeSingle()
+    receiverData = data
+  }
 
   // Debug: Log search results
   await supabase.from('audit_logs').insert({
