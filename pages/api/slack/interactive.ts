@@ -183,76 +183,87 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         })
       }
 
-      // Slackチャンネルに投稿
-      const slackMessage = {
-        channel: process.env.SLACK_CHANNEL_ID || '',
-        text: `🎉 ${sender.name}さんが${receiver.name}さんに${coins}コインを贈りました！`,
-        blocks: [
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `🎉 *${sender.name}* → *${receiver.name}* へ *${coins}コイン* を贈りました！`
-            }
-          },
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `💬 _${message}_`
-            }
-          },
-          {
-            type: 'actions',
-            block_id: `like_${transaction.id}`,
-            elements: [
+      // データベース記録が成功した時点で即座にSlackに成功レスポンスを返す
+      // その後のSlack通知処理は非同期で実行
+      const sendSlackNotifications = async () => {
+        try {
+          // Slackチャンネルに投稿
+          const slackMessage = {
+            channel: process.env.SLACK_CHANNEL_ID || '',
+            text: `🎉 ${sender.name}さんが${receiver.name}さんに${coins}コインを贈りました！`,
+            blocks: [
               {
-                type: 'button',
+                type: 'section',
                 text: {
-                  type: 'plain_text',
-                  text: '👍 いいね',
-                  emoji: true
-                },
-                action_id: 'like_transaction',
-                value: transaction.id.toString()
-              }
-            ]
-          },
-          {
-            type: 'context',
-            elements: [
+                  type: 'mrkdwn',
+                  text: `🎉 *${sender.name}* → *${receiver.name}* へ *${coins}コイン* を贈りました！`
+                }
+              },
               {
-                type: 'mrkdwn',
-                text: `<!date^${Math.floor(Date.now() / 1000)}^{date_num} {time}|${new Date().toLocaleString('ja-JP')}>`
+                type: 'section',
+                text: {
+                  type: 'mrkdwn',
+                  text: `💬 _${message}_`
+                }
+              },
+              {
+                type: 'actions',
+                block_id: `like_${transaction.id}`,
+                elements: [
+                  {
+                    type: 'button',
+                    text: {
+                      type: 'plain_text',
+                      text: '👍 いいね',
+                      emoji: true
+                    },
+                    action_id: 'like_transaction',
+                    value: transaction.id.toString()
+                  }
+                ]
+              },
+              {
+                type: 'context',
+                elements: [
+                  {
+                    type: 'mrkdwn',
+                    text: `<!date^${Math.floor(Date.now() / 1000)}^{date_num} {time}|${new Date().toLocaleString('ja-JP')}>`
+                  }
+                ]
               }
             ]
           }
-        ]
-      }
 
-      await fetch('https://slack.com/api/chat.postMessage', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${SLACK_BOT_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(slackMessage)
-      })
-
-      // 受信者にDM通知
-      if (receiver.slack_id) {
-        await fetch('https://slack.com/api/chat.postMessage', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${SLACK_BOT_TOKEN}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            channel: receiver.slack_id,
-            text: `🎁 ${sender.name}さんから${coins}コインを受け取りました！\n💬 「${message}」\n\n詳細: https://coin-system-nine.vercel.app/thanks`
+          await fetch('https://slack.com/api/chat.postMessage', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SLACK_BOT_TOKEN}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(slackMessage)
           })
-        })
+
+          // 受信者にDM通知
+          if (receiver.slack_id) {
+            await fetch('https://slack.com/api/chat.postMessage', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SLACK_BOT_TOKEN}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                channel: receiver.slack_id,
+                text: `🎁 ${sender.name}さんから${coins}コインを受け取りました！\n💬 「${message}」\n\n詳細: https://coin-system-nine.vercel.app/thanks`
+              })
+            })
+          }
+        } catch (error) {
+          console.error('Slack notification error:', error)
+        }
       }
+
+      // 非同期でSlack通知を実行（awaitしない）
+      sendSlackNotifications()
 
       return res.status(200).json({ ok: true })
     }
