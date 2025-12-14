@@ -200,47 +200,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.log('🔍 受取人検索開始:', recipientUsername);
         await sendSlackMessage(user_id, '📋 検索開始しました');
         
-        console.log('📋 Supabase環境確認完了 - 実際の検索をスキップしてテスト完了');
+        // 実際のSupabaseクエリで受取人検索
+        let recipients = null;
         
-        // 暫定的にハードコードでテスト（荒木さんのデータ）
-        const recipients = [{
-          id: '4', // 仮のID
-          name: '荒木 治 / Osamu Araki',
-          email: 'osamu-araki@example.com',
-          remaining_coins: 100,
-          slack_id: 'U0993V6VCVD'
-        }];
-        
-        console.log('✅ 検索成功（テストデータ）:', recipients);
-        await sendSlackMessage(user_id, `✅ ユーザー見つかりました: ${recipients[0].name}`);
-        
-        // 送信者も同様にテストデータ
-        const testSender = {
-          id: '1',
-          name: '石川晃',
-          remaining_coins: 240,
-          bonus_coins: 110,
-          slack_id: 'U08HZ16NEPM'
-        };
-        
-        console.log('✅ 送信者確定（テストデータ）:', testSender.name);
-        
-        // コイン残高確認
-        const testTotalCoins = (testSender.remaining_coins || 0) + (testSender.bonus_coins || 0);
-        console.log('💰 利用可能コイン:', testTotalCoins);
-        
-        if (testTotalCoins < coinAmount) {
-          console.log('❌ コイン不足');
-          await sendSlackMessage(user_id, `❌ 送信コイン数が不足しています。\n必要: ${coinAmount}コイン\n利用可能: ${testTotalCoins}コイン`);
+        try {
+          console.log('🔍 実際の検索開始');
+          const result = await supabase
+            .from('employees')
+            .select('id, name, email, remaining_coins, slack_id')
+            .ilike('name', `%${recipientUsername}%`);
+          
+          console.log('🔍 検索結果:', result);
+          
+          if (result.data && result.data.length > 0) {
+            recipients = result.data;
+            await sendSlackMessage(user_id, `✅ 検索成功: ${recipients.length}人見つかりました`);
+          } else {
+            await sendSlackMessage(user_id, '❌ ユーザーが見つかりませんでした');
+            return;
+          }
+        } catch (error) {
+          console.error('❌ 検索エラー:', error);
+          await sendSlackMessage(user_id, '❌ 検索中にエラーが発生しました');
           return;
         }
-        
-        console.log('🎯 テスト完了 - Supabase以外の処理は正常');
-        await sendSlackMessage(user_id, '🎯 テスト完了！Supabase接続問題のみ残存');
-        
-        /*
-        // Supabaseクエリの問題を調査中のため一時的にコメントアウト
-        let recipients = null;
         
         /*
         try {
@@ -285,10 +268,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // 進捗通知: 送信者確認
         await sendSlackMessage(user_id, `✅ 受取人確定: ${recipient.name}\n🔍 送信者アカウント確認中...`);
 
-        console.log('🎯 全処理テスト完了 - Slack連携ロジックは正常動作');
-        await sendSlackMessage(user_id, '🎯 全処理テスト完了！Slack連携ロジックは正常動作しています。');
+        if (!recipients || recipients.length === 0) {
+          console.log('❌ 受取人が見つかりません:', recipientUsername);
+          await sendSlackMessage(user_id, `❌ ユーザー「${recipientUsername}」が見つかりません。正確な名前を指定してください。`);
+          return;
+        }
 
-        /*
+        if (recipients.length > 1) {
+          console.log('⚠️ 複数のユーザーが見つかりました:', recipients.map(r => r.name));
+          const names = recipients.map(r => r.name).join(', ');
+          await sendSlackMessage(user_id, `⚠️ 複数のユーザーが見つかりました: ${names}\nより具体的な名前を指定してください。`);
+          return;
+        }
+
+        const recipient = recipients[0];
+        console.log('✅ 受取人確定:', recipient.name);
+        await sendSlackMessage(user_id, `✅ 受取人確定: ${recipient.name}`);
+
         // 送信者をSlack IDで検索
         console.log('🔍 送信者検索:', user_id);
         const { data: senders, error: senderError } = await supabase
@@ -400,7 +396,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         console.log('🎯 全処理完了');
-        */
 
       } catch (error) {
         console.error('❌ 非同期処理エラー:', error);
