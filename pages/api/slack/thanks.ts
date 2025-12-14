@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 import querystring from 'querystring'
-import { detectAnomaly } from '../../../lib/anomalyDetection'
+import { detectAnomalies } from '../../../lib/anomalyDetection'
 import { sendNotifications } from '../../../lib/notifications'
 
 export const config = { api: { bodyParser: false } }
@@ -35,6 +35,16 @@ function verifySlackSignature(rawBody: string, headers: any) {
   const expected = `v0=${hmac.digest('hex')}`
   
   return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig))
+}
+
+// 週の開始日を取得
+function getWeekStart(date = new Date()) {
+  const d = new Date(date)
+  const day = d.getDay() // 0=Sun,1=Mon
+  const diff = (day === 0 ? -6 : 1) - day // make Monday the first day
+  d.setDate(d.getDate() + diff)
+  d.setHours(0, 0, 0, 0)
+  return d.toISOString().slice(0, 10) // YYYY-MM-DD
 }
 
 // Slack APIヘルパー関数
@@ -259,10 +269,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // 異常検知（エラーでも処理は停止しない）
         try {
           console.log('🔍 異常検知開始');
-          const anomalyResult = await detectAnomaly(sender.id, coinAmount, message || '');
-          if (anomalyResult.isAnomaly) {
-            console.log('⚠️ 異常検知アラート:', anomalyResult.reasons);
-          }
+          const weekStart = getWeekStart();
+          await detectAnomalies(sender.id, recipient.id, coinAmount, weekStart);
+          console.log('✅ 異常検知完了');
         } catch (anomalyError) {
           console.error('❌ 異常検知エラー（処理継続）:', anomalyError);
         }
