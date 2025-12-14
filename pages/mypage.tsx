@@ -87,12 +87,13 @@ export default function MyPage() {
     setUserEmail(user.email || null)
 
     // get employee record
-    const { data: emp } = await supabase.from('employees').select('id, name, department, bonus_coins').eq('email', user.email).limit(1).maybeSingle()
+    const { data: emp } = await supabase.from('employees').select('id, name, department, bonus_coins, slack_id').eq('email', user.email).limit(1).maybeSingle()
     if (!emp) return
     setEmpId(emp.id)
     setUserName(emp.name || '')
     setDepartment(emp.department || '')
     setBonusCoins(emp.bonus_coins || 0)
+    setNewSlackId(emp.slack_id || '')
     setEditName(emp.name || '')
     setEditEmail(user.email || '')
     setEditDepartment(emp.department || '')
@@ -263,6 +264,26 @@ export default function MyPage() {
     }
   }
 
+  async function updateSlackId() {
+    if (!empId) return
+    
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .update({ slack_id: newSlackId.trim() || null })
+        .eq('id', empId)
+      
+      if (error) throw error
+      
+      setEditingSlackId(false)
+      setSlackUpdateMessage('✅ Slack IDを更新しました')
+      setTimeout(() => setSlackUpdateMessage(''), 3000)
+    } catch (error) {
+      setSlackUpdateMessage('❌ 更新に失敗しました')
+      setTimeout(() => setSlackUpdateMessage(''), 3000)
+    }
+  }
+
   async function handleLogout() {
     try {
       await supabase.auth.signOut()
@@ -419,7 +440,7 @@ export default function MyPage() {
                       <button
                         onClick={() => {
                           setEditingSlackId(false)
-                          setNewSlackId(emp?.slack_id || '')
+                          setNewSlackId(newSlackId)
                           setSlackUpdateMessage('')
                         }}
                         className="px-4 py-2 border border-slate-300 text-slate-700 rounded-md font-bold hover:bg-slate-100 transition"
@@ -431,7 +452,7 @@ export default function MyPage() {
                 ) : (
                   <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
                     <span className="text-slate-700">
-                      {emp?.slack_id || '未設定'}
+                      {newSlackId || '未設定'}
                     </span>
                     <button
                       onClick={() => setEditingSlackId(true)}
