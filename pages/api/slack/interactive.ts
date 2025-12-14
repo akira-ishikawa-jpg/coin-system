@@ -84,13 +84,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('employees')
         .select('id, name, slack_id')
         .eq('id', senderId)
-        .single()
+        .maybeSingle()
 
       const { data: receiver } = await supabase
         .from('employees')
         .select('id, name, slack_id')
         .eq('id', receiverId)
-        .single()
+        .maybeSingle()
 
       if (!sender || !receiver) {
         return res.status(200).json({
