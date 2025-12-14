@@ -53,21 +53,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const user_id = body.user_id as string
   const user_name = body.user_name as string
 
-  // Debug: Log the actual text received and parsed IDs
-  await supabase.from('audit_logs').insert({ 
-    actor_id: null, 
-    action: 'slack_debug', 
-    payload: { 
-      received_text: text, 
-      user_id, 
-      user_name,
-      parsed_target_slack_id: targetSlackId,
-      is_username_format: isUsernameFormat,
-      parsed_coins: coins,
-      parsed_message: message
-    } 
-  })
-
   // Try pattern with coins first: <@USER_ID> coins message or @username coins message
   let m = text.match(/<@([A-Z0-9]+)>\s+(\d+)\s*(.*)/s) || text.match(/@([a-zA-Z0-9\-_.]+)\s+(\d+)\s*(.*)/s)
   let targetSlackId: string, coins: number, message: string, isUsernameFormat = false
@@ -91,6 +76,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     message = m[2] || ''
     isUsernameFormat = !targetSlackId.match(/^[A-Z0-9]+$/) // Check if it's a username instead of Slack ID
   }
+
+  // Debug: Log the actual text received and parsed IDs
+  await supabase.from('audit_logs').insert({ 
+    actor_id: null, 
+    action: 'slack_debug', 
+    payload: { 
+      received_text: text, 
+      user_id, 
+      user_name,
+      parsed_target_slack_id: targetSlackId,
+      is_username_format: isUsernameFormat,
+      parsed_coins: coins,
+      parsed_message: message
+    } 
+  })
 
   if (isNaN(coins) || coins <= 0) {
     res.setHeader('Content-Type', 'application/json')
