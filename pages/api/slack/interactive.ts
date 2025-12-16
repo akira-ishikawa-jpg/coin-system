@@ -309,10 +309,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // 非同期でSlack通知を実行（awaitしない）
-      sendSlackNotifications().catch(error => {
+      try {
+        await sendSlackNotifications()
+      } catch (error) {
         console.error('🔥 Slack notifications failed:', error)
-      })
-
+      }
       console.log('✅ Returning success response to Slack modal')
       return res.status(200).json({ response_action: "clear" })
     }

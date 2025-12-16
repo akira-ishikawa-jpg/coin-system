@@ -23,6 +23,7 @@ export default function ThanksPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [departments, setDepartments] = useState<string[]>([])
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
+  const [showOnlyMine, setShowOnlyMine] = useState<boolean>(false)
 
   useEffect(() => {
     load()
@@ -105,17 +106,41 @@ export default function ThanksPage() {
     setLoading(false)
   }
 
+
   function filterByDepartment(dept: string) {
     setSelectedDepartment(dept)
-    if (dept === 'all') {
-      setTransactions(allTransactions)
-    } else {
-      const filtered = allTransactions.filter(
+    applyFilters(showOnlyMine, dept)
+  }
+
+  function applyFilters(onlyMine: boolean, dept: string) {
+    let filtered = allTransactions
+    if (dept !== 'all') {
+      filtered = filtered.filter(
         t => t.sender_department === dept || t.receiver_department === dept
       )
-      setTransactions(filtered)
     }
+    if (onlyMine && currentUserId) {
+      filtered = filtered.filter(t => t.receiver_name && t.receiver_name !== '-' && t.receiver_name !== '' && t.receiver_name !== null && t.receiver_name !== undefined && t.receiver_name !== '未設定' && t.receiver_name === getCurrentUserName())
+    }
+    setTransactions(filtered)
   }
+
+  // currentUserIdから自分の名前を取得する関数
+  function getCurrentUserName() {
+    if (!allTransactions.length || !currentUserId) return ''
+    // 送信・受信どちらかで自分が関わった最初のトランザクションから名前を取得
+    const tx = allTransactions.find(t => t.sender_name && t.sender_name !== '-' && t.sender_name !== '' && t.sender_name !== null && t.sender_name !== undefined && t.sender_name !== '未設定' && t.sender_name === t.receiver_name)
+    if (tx) return tx.receiver_name
+    // それ以外はreceiver_idで一致するものから取得（もしidがあれば）
+    // 今回はreceiver_nameでフィルタ
+    return ''
+  }
+
+  // showOnlyMineトグル変更時の副作用
+  useEffect(() => {
+    applyFilters(showOnlyMine, selectedDepartment)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showOnlyMine, allTransactions, selectedDepartment, currentUserId])
 
   async function toggleLike(transactionId: string) {
     if (!currentUserId) return
@@ -184,40 +209,56 @@ export default function ThanksPage() {
             
             <div className="p-8">
 
-            {/* Department Filter */}
-            {!loading && departments.length > 0 && (
-              <div className="mb-8">
-                <div className="flex items-center justify-center gap-2 mb-3">
-                  <span className="text-sm font-semibold text-gray-700">部署で絞り込み:</span>
-                  <span className="text-sm text-gray-500">({transactions.length}件)</span>
-                </div>
-                <div className="flex flex-wrap justify-center gap-2">
-                  <button
-                    onClick={() => filterByDepartment('all')}
-                    className={`px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 hover:scale-110 active:scale-95 ${
-                      selectedDepartment === 'all'
-                        ? 'bg-teal-600 text-white hover:bg-teal-700 shadow-md'
-                        : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
-                    }`}
-                  >
-                    すべて
-                  </button>
-                  {departments.map(dept => (
-                    <button
-                      key={dept}
-                      onClick={() => filterByDepartment(dept)}
-                      className={`px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 hover:scale-110 active:scale-95 ${
-                        selectedDepartment === dept
-                          ? 'bg-teal-600 text-white hover:bg-teal-700 shadow-md'
-                          : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
-                      }`}
-                    >
-                      {dept}
-                    </button>
-                  ))}
-                </div>
+
+            {/* 自分がもらった感謝のみ表示トグル */}
+            <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
+              <div>
+                {!loading && departments.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-sm font-semibold text-gray-700">部署で絞り込み:</span>
+                      <span className="text-sm text-gray-500">({transactions.length}件)</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => filterByDepartment('all')}
+                        className={`px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 hover:scale-110 active:scale-95 ${
+                          selectedDepartment === 'all'
+                            ? 'bg-teal-600 text-white hover:bg-teal-700 shadow-md'
+                            : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                        }`}
+                      >
+                        すべて
+                      </button>
+                      {departments.map(dept => (
+                        <button
+                          key={dept}
+                          onClick={() => filterByDepartment(dept)}
+                          className={`px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 hover:scale-110 active:scale-95 ${
+                            selectedDepartment === dept
+                              ? 'bg-teal-600 text-white hover:bg-teal-700 shadow-md'
+                              : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                          }`}
+                        >
+                          {dept}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+              <div>
+                <label className="inline-flex items-center cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    className="form-checkbox h-5 w-5 text-teal-600"
+                    checked={showOnlyMine}
+                    onChange={e => setShowOnlyMine(e.target.checked)}
+                  />
+                  <span className="ml-2 text-sm font-semibold text-gray-700">自分がもらった感謝のみ表示</span>
+                </label>
+              </div>
+            </div>
 
             {loading ? (
               <p className="text-center text-gray-500">読み込み中...</p>
