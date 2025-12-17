@@ -112,28 +112,20 @@ export default function ThanksPage() {
   }
 
   function applyFilters(onlyMine: boolean, dept: string) {
-    let filtered = allTransactions
+    let filtered = allTransactions;
     if (dept !== 'all') {
       filtered = filtered.filter(
         t => t.sender_department === dept || t.receiver_department === dept
-      )
+      );
     }
     if (onlyMine && currentUserId) {
-      filtered = filtered.filter(t => t.receiver_name && t.receiver_name !== '-' && t.receiver_name !== '' && t.receiver_name !== null && t.receiver_name !== undefined && t.receiver_name !== '未設定' && t.receiver_name === getCurrentUserName())
+      filtered = filtered.filter(t => t.receiver_id === currentUserId);
     }
-    setTransactions(filtered)
+    setTransactions(filtered);
   }
 
   // currentUserIdから自分の名前を取得する関数
-  function getCurrentUserName() {
-    if (!allTransactions.length || !currentUserId) return ''
-    // 送信・受信どちらかで自分が関わった最初のトランザクションから名前を取得
-    const tx = allTransactions.find(t => t.sender_name && t.sender_name !== '-' && t.sender_name !== '' && t.sender_name !== null && t.sender_name !== undefined && t.sender_name !== '未設定' && t.sender_name === t.receiver_name)
-    if (tx) return tx.receiver_name
-    // それ以外はreceiver_idで一致するものから取得（もしidがあれば）
-    // 今回はreceiver_nameでフィルタ
-        filtered = filtered.filter(t => t.receiver_id === currentUserId)
-  }
+  // getCurrentUserName関数は不要になったので削除
 
   // showOnlyMineトグル変更時の副作用
   useEffect(() => {
