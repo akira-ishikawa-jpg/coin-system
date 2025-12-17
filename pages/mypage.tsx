@@ -24,8 +24,8 @@ export default function MyPage() {
   const [editPassword, setEditPassword] = useState('')
   const [editMessage, setEditMessage] = useState('')
   const [editLoading, setEditLoading] = useState(false)
-  const [notificationEnabled, setNotificationEnabled] = useState(false)
-  const [notificationSupported, setNotificationSupported] = useState(false)
+  const [notifyEmail, setNotifyEmail] = useState(true)
+  const [notifySlack, setNotifySlack] = useState(true)
   const [monthlyData, setMonthlyData] = useState<any[]>([])
   const [editingSlackId, setEditingSlackId] = useState(false)
   const [newSlackId, setNewSlackId] = useState('')
@@ -97,6 +97,8 @@ export default function MyPage() {
     setEditName(emp.name || '')
     setEditEmail(user.email || '')
     setEditDepartment(emp.department || '')
+    setNotifyEmail(emp.notify_email !== false) // undefined/null→true
+    setNotifySlack(emp.notify_slack !== false)
 
     // compute week start
     const weekStart = (() => {
@@ -249,18 +251,17 @@ export default function MyPage() {
     }
   }
 
-  async function handleEnableNotifications() {
-    const granted = await requestNotificationPermission()
-    setNotificationEnabled(granted)
-    
-    if (granted) {
-      // Test notification
-      await showNotification('通知を有効にしました', {
-        body: 'コイン受け取り時に通知が届くようになります',
-        icon: '/salesnow-logo.svg'
-      })
-    } else {
-      alert('通知が拒否されました。ブラウザの設定から許可してください。')
+  async function handleToggleNotifyEmail(next: boolean) {
+    setNotifyEmail(next)
+    if (empId) {
+      await supabase.from('employees').update({ notify_email: next }).eq('id', empId)
+    }
+  }
+
+  async function handleToggleNotifySlack(next: boolean) {
+    setNotifySlack(next)
+    if (empId) {
+      await supabase.from('employees').update({ notify_slack: next }).eq('id', empId)
     }
   }
 
@@ -468,29 +469,46 @@ export default function MyPage() {
             </div>
           )}
 
-          {/* Notification Settings */}
-          {notificationSupported && (
-            <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-8">
-              <h3 className="text-xl font-bold mb-4 text-gray-800">通知設定</h3>
-              <div className="flex items-center justify-between">
+          {/* Notification Settings: メール・Slack通知 */}
+          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-8">
+            <h3 className="text-xl font-bold mb-4 text-gray-800">通知設定</h3>
+            <div className="flex flex-col sm:flex-row gap-6">
+              {/* メール通知 */}
+              <div className="flex-1 flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-gray-700">プッシュ通知</p>
-                  <p className="text-sm text-gray-600">コイン受け取り時にブラウザ通知を受け取る</p>
+                  <p className="font-semibold text-gray-700">メール通知</p>
+                  <p className="text-sm text-gray-600">コイン受け取り時にメールで通知を受け取る</p>
                 </div>
                 <button
-                  onClick={handleEnableNotifications}
-                  disabled={notificationEnabled}
+                  onClick={() => handleToggleNotifyEmail(!notifyEmail)}
                   className={`px-6 py-2 rounded-md font-bold transition ${
-                    notificationEnabled
-                      ? 'bg-green-100 text-green-700 cursor-not-allowed'
-                      : 'bg-teal-600 text-white hover:bg-teal-700'
+                    notifyEmail
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
                   }`}
                 >
-                  {notificationEnabled ? '✓ 有効' : '有効にする'}
+                  {notifyEmail ? '✓ 有効' : '無効'}
+                </button>
+              </div>
+              {/* Slack通知 */}
+              <div className="flex-1 flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-gray-700">Slack通知</p>
+                  <p className="text-sm text-gray-600">コイン受け取り時にSlackで通知を受け取る</p>
+                </div>
+                <button
+                  onClick={() => handleToggleNotifySlack(!notifySlack)}
+                  className={`px-6 py-2 rounded-md font-bold transition ${
+                    notifySlack
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                  }`}
+                >
+                  {notifySlack ? '✓ 有効' : '無効'}
                 </button>
               </div>
             </div>
-          )}
+          </div>
 
           {/* Transaction History */}
           <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-8">
