@@ -90,7 +90,8 @@ export default function ThanksPage() {
       emoji: t.emoji || '',
       created_at: t.created_at,
       likes_count: likesMap[t.id]?.count || 0,
-      user_has_liked: likesMap[t.id]?.userLiked || false
+      user_has_liked: likesMap[t.id]?.userLiked || false,
+      receiver_id: t.receiver_id
     }))
 
     // Extract unique departments
