@@ -73,7 +73,7 @@ export default function MyPage() {
     }, 30000) // Check every 30 seconds
     
     return () => clearInterval(interval)
-  }, [empId, notificationEnabled])
+  }, [empId])
 
   async function load() {
     const { data } = await supabase.auth.getUser()
