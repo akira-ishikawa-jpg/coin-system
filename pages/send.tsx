@@ -251,17 +251,17 @@ export default function SendPage() {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  メッセージ（必須、最大100字）
+                  メッセージ（必須、最大300字）
                 </label>
                 <textarea 
-                  maxLength={100} 
+                  maxLength={300} 
                   value={message} 
                   onChange={(e) => setMessage(e.target.value)} 
                   className="w-full border border-slate-300 p-3 rounded-md focus:outline-none focus:border-blue-500 transition h-24"
                   placeholder="感謝のメッセージを入力..."
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">{message.length}/100</p>
+                <p className="text-xs text-gray-500 mt-1">{message.length}/300</p>
               </div>
 
               <div>
