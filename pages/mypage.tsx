@@ -40,7 +40,7 @@ export default function MyPage() {
     if (!empId) return
     
     const interval = setInterval(async () => {
-      if (!empId || !notificationEnabled) return
+      if (!empId) return
       
       // Get latest transaction
       const { data: latest } = await supabase
