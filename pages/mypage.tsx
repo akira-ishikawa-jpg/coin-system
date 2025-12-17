@@ -39,12 +39,16 @@ export default function MyPage() {
   const [notifyEmail, setNotifyEmail] = useState(true)
   const [notifySlack, setNotifySlack] = useState(true)
   const [monthlyData, setMonthlyData] = useState<any[]>([])
+  // ページング用状態
+  const [page, setPage] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const pageSize = 20
   const [editingSlackId, setEditingSlackId] = useState(false)
   const [newSlackId, setNewSlackId] = useState('')
   const [slackUpdateMessage, setSlackUpdateMessage] = useState('')
 
   useEffect(() => {
-    load()
+    load(page)
     
     // （旧プッシュ通知用のサポート判定は不要になったので削除）
 
@@ -85,9 +89,9 @@ export default function MyPage() {
     }, 30000) // Check every 30 seconds
     
     return () => clearInterval(interval)
-  }, [empId])
+  }, [empId, page])
 
-  async function load() {
+  async function load(pageNum = 1) {
     const { data } = await supabase.auth.getUser()
     const user = data.user
     if (!user) return
@@ -149,16 +153,19 @@ export default function MyPage() {
     const { data: sentMonth } = await supabase.from('coin_transactions').select('coins').eq('sender_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`).not('slack_payload', 'cs', '{"bonus":true}')
     setSentThisMonth((sentMonth || []).reduce((s:any,r:any)=>s+(r.coins||0),0))
 
-    // get transaction history (sent and received)
-    const { data: txns } = await supabase
+    // get transaction history (sent and received) + ページング
+    const from = (pageNum - 1) * pageSize
+    const to = from + pageSize - 1
+    const { data: txns, count } = await supabase
       .from('coin_transactions')
-      .select('id, sender_id, receiver_id, coins, message, created_at, sender:sender_id(name), receiver:receiver_id(name)')
+      .select('id, sender_id, receiver_id, coins, message, created_at, sender:sender_id(name), receiver:receiver_id(name)', { count: 'exact' })
       .or(`sender_id.eq.${emp.id},receiver_id.eq.${emp.id}`)
       .not('slack_payload', 'cs', '{"bonus":true}')
       .order('created_at', { ascending: false })
-      .limit(20)
+      .range(from, to)
 
     setTransactions(txns || [])
+    setTotalCount(count || 0)
     
     // Load monthly trend data (last 6 months)
     await loadMonthlyTrend(emp.id)
@@ -527,42 +534,64 @@ export default function MyPage() {
             ) : transactions.length === 0 ? (
               <p className="text-center text-gray-500">履歴がありません</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-50 border-b border-slate-200">
-                    <tr>
-                      <th className="p-3 text-left font-bold text-gray-700">日時</th>
-                      <th className="p-3 text-left font-bold text-gray-700">種類</th>
-                      <th className="p-3 text-left font-bold text-gray-700">相手</th>
-                      <th className="p-3 text-right font-bold text-gray-700">コイン数</th>
-                      <th className="p-3 text-left font-bold text-gray-700">メッセージ</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {transactions.map((tx:any, idx:number) => {
-                      const isSent = tx.sender_id === empId
-                      const partnerName = isSent ? (tx.receiver?.name) : (tx.sender?.name)
-                      const date = new Date(tx.created_at).toLocaleString('ja-JP')
-                      return (
-                        <tr key={tx.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                          <td className="p-3 text-gray-700">{date}</td>
-                          <td className="p-3 font-bold text-slate-600">
-                            {isSent ? '贈呈' : '受信'}
-                          </td>
-                          <td className="p-3 text-gray-700">{partnerName || '-'}</td>
-                          <td className={`p-3 text-right font-bold ${isSent ? 'text-slate-700' : 'text-teal-600'}`}>
-                            {isSent ? '-' : '+'}{tx.coins}
-                          </td>
-                          <td className="p-3 text-gray-600 text-xs">
-                            {tx.emoji && <span className="mr-2">{tx.emoji}</span>}
-                            {tx.message || '-'}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="p-3 text-left font-bold text-gray-700">日時</th>
+                        <th className="p-3 text-left font-bold text-gray-700">種類</th>
+                        <th className="p-3 text-left font-bold text-gray-700">相手</th>
+                        <th className="p-3 text-right font-bold text-gray-700">コイン数</th>
+                        <th className="p-3 text-left font-bold text-gray-700">メッセージ</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {transactions.map((tx:any, idx:number) => {
+                        const isSent = tx.sender_id === empId
+                        const partnerName = isSent ? (tx.receiver?.name) : (tx.sender?.name)
+                        const date = new Date(tx.created_at).toLocaleString('ja-JP')
+                        return (
+                          <tr key={tx.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                            <td className="p-3 text-gray-700">{date}</td>
+                            <td className="p-3 font-bold text-slate-600">
+                              {isSent ? '贈呈' : '受信'}
+                            </td>
+                            <td className="p-3 text-gray-700">{partnerName || '-'}</td>
+                            <td className={`p-3 text-right font-bold ${isSent ? 'text-slate-700' : 'text-teal-600'}`}> 
+                              {isSent ? '-' : '+'}{tx.coins}
+                            </td>
+                            <td className="p-3 text-gray-600 text-xs">
+                              {tx.emoji && <span className="mr-2">{tx.emoji}</span>}
+                              {tx.message || '-'}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {/* ページングUI */}
+                <div className="flex justify-center items-center gap-2 mt-6">
+                  <button
+                    className="px-3 py-1 rounded border border-slate-300 bg-slate-100 text-slate-700 disabled:opacity-50"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >前へ</button>
+                  {Array.from({ length: Math.ceil(totalCount / pageSize) }, (_, i) => (
+                    <button
+                      key={i}
+                      className={`px-3 py-1 rounded border ${page === i + 1 ? 'bg-teal-600 text-white border-teal-600' : 'bg-slate-100 text-slate-700 border-slate-300'}`}
+                      onClick={() => setPage(i + 1)}
+                    >{i + 1}</button>
+                  ))}
+                  <button
+                    className="px-3 py-1 rounded border border-slate-300 bg-slate-100 text-slate-700 disabled:opacity-50"
+                    onClick={() => setPage((p) => Math.min(Math.ceil(totalCount / pageSize), p + 1))}
+                    disabled={page === Math.ceil(totalCount / pageSize) || totalCount === 0}
+                  >次へ</button>
+                </div>
+              </>
             )}
           </div>
           </div>
