@@ -34,12 +34,7 @@ export default function MyPage() {
   useEffect(() => {
     load()
     
-    // Check notification support and permission
-    const supported = checkNotificationSupport()
-    setNotificationSupported(supported)
-    if (supported && Notification.permission === 'granted') {
-      setNotificationEnabled(true)
-    }
+    // （旧プッシュ通知用のサポート判定は不要になったので削除）
 
     // Poll for new transactions and show notifications
     if (!empId) return
