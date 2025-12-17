@@ -33,11 +33,12 @@ export default function ThanksPage() {
     setLoading(true)
     
     // Get current user
-    const { data: userData } = await supabase.auth.getUser()
+      load(1)
     if (!userData.user) return
     
     const { data: emp } = await supabase.from('employees').select('id').eq('email', userData.user.email).limit(1).maybeSingle()
     if (!emp) return
+      const PAGE_SIZE = 50
     setCurrentUserId(emp.id)
 
     // Get all transactions with sender/receiver names, departments and like counts
@@ -133,7 +134,7 @@ export default function ThanksPage() {
     if (tx) return tx.receiver_name
     // それ以外はreceiver_idで一致するものから取得（もしidがあれば）
     // 今回はreceiver_nameでフィルタ
-    return ''
+        filtered = filtered.filter(t => t.receiver_id === currentUserId)
   }
 
   // showOnlyMineトグル変更時の副作用
