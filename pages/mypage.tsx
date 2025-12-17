@@ -415,71 +415,55 @@ export default function MyPage() {
           </div>
           
           {/* Slack ID設定 */}
-          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center">
-              💬 Slack連携設定
-            </h2>
-            <div className="space-y-4">
-              <div>
-                {/* 横並びにするflexラッパー */}
-                <div className="flex items-center gap-4 mb-2">
-                  <label className="text-sm font-semibold text-gray-700 whitespace-nowrap" style={{ minWidth: 80 }}>
-                    Slack ID
-                  </label>
-                  {editingSlackId ? (
-                    <>
-                      <input
-                        type="text"
-                        value={newSlackId}
-                        onChange={(e) => setNewSlackId(e.target.value)}
-                        placeholder="例: U12345ABCDE"
-                        className="border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:border-teal-500 w-64"
-                      />
-                      <button
-                        onClick={updateSlackId}
-                        className="bg-teal-600 text-white px-4 py-2 rounded-md font-bold hover:bg-teal-700 transition ml-2"
-                      >
-                        保存
-                      </button>
-                      <button
-                        onClick={() => {
-                          setEditingSlackId(false)
-                          setNewSlackId(newSlackId)
-                          setSlackUpdateMessage('')
-                        }}
-                        className="px-4 py-2 border border-slate-300 text-slate-700 rounded-md font-bold hover:bg-slate-100 transition ml-2"
-                      >
-                        キャンセル
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex items-center bg-slate-50 border border-slate-200 rounded-md px-3 py-2 w-64">
-                        <span className="text-slate-700 flex-1">
-                          {newSlackId || '未設定'}
-                        </span>
-                        <button
-                          onClick={() => setEditingSlackId(true)}
-                          className="text-teal-600 hover:text-teal-700 font-semibold text-sm ml-2"
-                        >
-                          編集
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-                {slackUpdateMessage && (
-                  <div className={`mt-2 text-sm ${
-                    slackUpdateMessage.includes('✅') ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {slackUpdateMessage}
-                  </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+            {/* ...既存のカード... */}
+            <div className="col-span-2 md:col-span-1 bg-white border border-slate-200 rounded-lg shadow-sm p-4 flex flex-col items-start justify-center min-h-[92px]">
+              <div className="flex items-center w-full">
+                <span className="block text-xs font-semibold text-gray-500 mr-2">Slack ID</span>
+                {editingSlackId ? (
+                  <>
+                    <input
+                      type="text"
+                      value={newSlackId}
+                      onChange={(e) => setNewSlackId(e.target.value)}
+                      placeholder="例: U12345ABCDE"
+                      className="border border-slate-300 rounded-md px-2 py-1 focus:outline-none focus:border-teal-500 w-32 text-sm"
+                    />
+                    <button
+                      onClick={updateSlackId}
+                      className="ml-2 bg-teal-600 text-white px-2 py-1 rounded font-bold text-xs hover:bg-teal-700 transition"
+                    >保存</button>
+                    <button
+                      onClick={() => {
+                        setEditingSlackId(false)
+                        setNewSlackId(newSlackId)
+                        setSlackUpdateMessage('')
+                      }}
+                      className="ml-1 px-2 py-1 border border-slate-300 text-slate-700 rounded font-bold text-xs hover:bg-slate-100 transition"
+                    >キャンセル</button>
+                  </>
+                ) : (
+                  <>
+                    <span className="ml-2 text-base font-mono text-slate-700">{newSlackId || '未設定'}</span>
+                    <button
+                      onClick={() => setEditingSlackId(true)}
+                      className="ml-2 text-teal-600 hover:text-teal-700 font-semibold text-xs"
+                    >編集</button>
+                  </>
                 )}
-                
-                <p className="text-sm text-gray-600 mt-2">
+              </div>
+              {slackUpdateMessage && (
+                <div className={`mt-1 text-xs ${
+                  slackUpdateMessage.includes('✅') ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {slackUpdateMessage}
+                </div>
+              )}
+              {editingSlackId && (
+                <p className="text-xs text-gray-500 mt-2">
                   💡 Slack IDはSlackアプリで自分のプロフィール → 「その他」→ 「メンバーIDをコピー」で取得できます
                 </p>
-              </div>
+              )}
             </div>
           </div>
 
