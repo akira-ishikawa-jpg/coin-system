@@ -14,6 +14,7 @@ type Transaction = {
   created_at: string
   likes_count: number
   user_has_liked: boolean
+  receiver_id: string
 }
 
 export default function ThanksPage() {
