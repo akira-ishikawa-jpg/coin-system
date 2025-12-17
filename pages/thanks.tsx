@@ -29,13 +29,11 @@ export default function ThanksPage() {
     load()
   }, [])
 
-  async function load() {
+  async function load(pageNum = 1) {
     setLoading(true)
-    
     // Get current user
-      load(1)
+    const { data: userData } = await supabase.auth.getUser()
     if (!userData.user) return
-    
     const { data: emp } = await supabase.from('employees').select('id').eq('email', userData.user.email).limit(1).maybeSingle()
     if (!emp) return
       const PAGE_SIZE = 50
