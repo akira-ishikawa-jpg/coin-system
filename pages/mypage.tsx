@@ -425,12 +425,16 @@ export default function MyPage() {
               <div className="text-sm font-bold text-slate-900 truncate">{userName || '-'}</div>
             </div>
             <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 flex flex-col justify-center">
+              <div className="text-xs text-gray-600 mb-1">メールアドレス</div>
+              <div className="text-xs font-bold text-slate-900 truncate">{userEmail || '-'}</div>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 flex flex-col justify-center">
               <div className="text-xs text-gray-600 mb-1">部署</div>
               <div className="text-sm font-bold text-slate-900 truncate">{department || '-'}</div>
             </div>
             <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 flex flex-col justify-center">
-              <div className="text-xs text-gray-600 mb-1">メールアドレス</div>
-              <div className="text-xs font-bold text-slate-900 truncate">{userEmail || '-'}</div>
+              <div className="text-xs text-gray-600 mb-1">Slack ID</div>
+              <div className="text-xs font-mono font-bold text-slate-900 truncate">{newSlackId || '未設定'}</div>
             </div>
             <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 flex flex-col justify-center">
               <div className="text-xs text-gray-600 mb-1">今週の残コイン</div>
@@ -443,10 +447,6 @@ export default function MyPage() {
             <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 flex flex-col justify-center">
               <div className="text-xs text-gray-600 mb-1">今月の贈呈</div>
               <div className="text-xl font-bold text-teal-600">{sentThisMonth}</div>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 flex flex-col justify-center">
-              <div className="text-xs text-gray-600 mb-1">Slack ID</div>
-              <div className="text-xs font-mono font-bold text-slate-900 truncate">{newSlackId || '未設定'}</div>
             </div>
           </div>
 
