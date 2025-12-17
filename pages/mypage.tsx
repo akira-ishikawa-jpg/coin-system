@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 type Employee = {
   id: string;
   name: string;
+  email?: string;
   department: string;
   bonus_coins: number;
   slack_id: string;
@@ -93,7 +94,7 @@ export default function MyPage() {
     setUserEmail(user.email || null)
 
     // get employee record
-    const { data: emp } = await supabase.from('employees').select('id, name, department, bonus_coins, slack_id, notify_email, notify_slack').eq('email', user.email).limit(1).maybeSingle()
+    const { data: emp } = await supabase.from('employees').select('id, name, email, department, bonus_coins, slack_id, notify_email, notify_slack').eq('email', user.email).limit(1).maybeSingle()
     // empの型を明示
     // const emp: Employee | null = data;
     if (!emp) return
