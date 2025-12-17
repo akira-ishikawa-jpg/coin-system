@@ -1,4 +1,15 @@
 import { useEffect, useState } from 'react'
+
+// Employee型を定義（notify_email, notify_slackを含む）
+type Employee = {
+  id: string;
+  name: string;
+  department: string;
+  bonus_coins: number;
+  slack_id: string;
+  notify_email?: boolean;
+  notify_slack?: boolean;
+};
 import Header from '../components/Header'
 import { supabase } from '../lib/supabaseClient'
 import { requestNotificationPermission, checkNotificationSupport, showNotification } from '../lib/notifications'
@@ -82,7 +93,9 @@ export default function MyPage() {
     setUserEmail(user.email || null)
 
     // get employee record
-    const { data: emp } = await supabase.from('employees').select('id, name, department, bonus_coins, slack_id').eq('email', user.email).limit(1).maybeSingle()
+    const { data: emp } = await supabase.from('employees').select('id, name, department, bonus_coins, slack_id, notify_email, notify_slack').eq('email', user.email).limit(1).maybeSingle()
+    // empの型を明示
+    // const emp: Employee | null = data;
     if (!emp) return
     setEmpId(emp.id)
     setUserName(emp.name || '')
