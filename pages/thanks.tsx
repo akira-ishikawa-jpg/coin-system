@@ -25,10 +25,14 @@ export default function ThanksPage() {
   const [departments, setDepartments] = useState<string[]>([])
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
   const [showOnlyMine, setShowOnlyMine] = useState<boolean>(false)
+  // ページング用
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 50
+  const [totalCount, setTotalCount] = useState(0)
 
   useEffect(() => {
-    load()
-  }, [])
+    load(page)
+  }, [page])
 
   async function load(pageNum = 1) {
     setLoading(true)
@@ -41,6 +45,15 @@ export default function ThanksPage() {
     setCurrentUserId(emp.id)
 
     // Get all transactions with sender/receiver names, departments and like counts
+    // 件数取得
+    const { count } = await supabase
+      .from('coin_transactions')
+      .select('id', { count: 'exact', head: true })
+    setTotalCount(count || 0)
+
+    // ページ分だけ取得
+    const from = (pageNum - 1) * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
     const { data: txns } = await supabase
       .from('coin_transactions')
       .select(`
@@ -53,7 +66,7 @@ export default function ThanksPage() {
         receiver:receiver_id(name, department)
       `)
       .order('created_at', { ascending: false })
-      .limit(100)
+      .range(from, to)
 
     if (!txns) return
 
@@ -258,50 +271,72 @@ export default function ThanksPage() {
             ) : transactions.length === 0 ? (
               <p className="text-center text-gray-500">まだ感謝が贈られていません</p>
             ) : (
-              <div className="space-y-4">
-                {transactions.map((tx, index) => (
-                  <div 
-                    key={tx.id} 
-                    className="bg-slate-50 border border-slate-200 rounded-lg p-6 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 animate-slide-in"
-                    style={{ animationDelay: `${index * 0.05}s` }}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="font-bold text-slate-900">{tx.sender_name}</span>
-                          <span className="text-gray-500">→</span>
-                          <span className="font-bold text-slate-900">{tx.receiver_name}</span>
-                          <span className="bg-teal-100 text-teal-700 px-3 py-1 rounded-full text-sm font-bold">
-                            {tx.coins} コイン
-                          </span>
+              <>
+                <div className="space-y-4">
+                  {transactions.map((tx, index) => (
+                    <div 
+                      key={tx.id} 
+                      className="bg-slate-50 border border-slate-200 rounded-lg p-6 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 animate-slide-in"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className="font-bold text-slate-900">{tx.sender_name}</span>
+                            <span className="text-gray-500">→</span>
+                            <span className="font-bold text-slate-900">{tx.receiver_name}</span>
+                            <span className="bg-teal-100 text-teal-700 px-3 py-1 rounded-full text-sm font-bold">
+                              {tx.coins} コイン
+                            </span>
+                          </div>
+                          <p className="text-gray-700 mb-2">
+                            {tx.emoji && <span className="text-2xl mr-2">{tx.emoji}</span>}
+                            {tx.message}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(tx.created_at).toLocaleString('ja-JP')}
+                          </p>
                         </div>
-                        <p className="text-gray-700 mb-2">
-                          {tx.emoji && <span className="text-2xl mr-2">{tx.emoji}</span>}
-                          {tx.message}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(tx.created_at).toLocaleString('ja-JP')}
-                        </p>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 pt-3 border-t border-slate-200">
+                        <button
+                          onClick={() => toggleLike(tx.id)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-md font-semibold transition-all duration-200 hover:scale-110 active:scale-95 ${
+                            tx.user_has_liked
+                              ? 'bg-teal-600 text-white hover:bg-teal-700 animate-pulse-once'
+                              : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                          }`}
+                        >
+                          <span className="text-lg">{tx.user_has_liked ? '❤️' : '🤍'}</span>
+                          <span>いいね</span>
+                          {tx.likes_count > 0 && <span>({tx.likes_count})</span>}
+                        </button>
                       </div>
                     </div>
-                    
-                    <div className="flex items-center gap-3 pt-3 border-t border-slate-200">
-                      <button
-                        onClick={() => toggleLike(tx.id)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-md font-semibold transition-all duration-200 hover:scale-110 active:scale-95 ${
-                          tx.user_has_liked
-                            ? 'bg-teal-600 text-white hover:bg-teal-700 animate-pulse-once'
-                            : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                        }`}
-                      >
-                        <span className="text-lg">{tx.user_has_liked ? '❤️' : '🤍'}</span>
-                        <span>いいね</span>
-                        {tx.likes_count > 0 && <span>({tx.likes_count})</span>}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+                {/* ページングUI（常時表示） */}
+                <div className="flex justify-center items-center gap-2 mt-8">
+                  <button
+                    className="px-3 py-1 rounded border border-slate-300 bg-slate-100 text-slate-700 disabled:opacity-50"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >前へ</button>
+                  {Array.from({ length: Math.max(1, Math.ceil(totalCount / PAGE_SIZE)) }, (_, i) => (
+                    <button
+                      key={i}
+                      className={`px-3 py-1 rounded border ${page === i + 1 ? 'bg-teal-600 text-white border-teal-600' : 'bg-slate-100 text-slate-700 border-slate-300'}`}
+                      onClick={() => setPage(i + 1)}
+                    >{i + 1}</button>
+                  ))}
+                  <button
+                    className="px-3 py-1 rounded border border-slate-300 bg-slate-100 text-slate-700 disabled:opacity-50"
+                    onClick={() => setPage((p) => Math.min(Math.max(1, Math.ceil(totalCount / PAGE_SIZE)), p + 1))}
+                    disabled={page === Math.max(1, Math.ceil(totalCount / PAGE_SIZE))}
+                  >次へ</button>
+                </div>
+              </>
             )}
             </div>
           </div>
