@@ -120,7 +120,7 @@ export default function Header() {
               <Link href="/send" className="hover:text-teal-600 transition font-medium">コインを贈る</Link>
               <Link href="/thanks" className="hover:text-teal-600 transition font-medium">みんなの感謝</Link>
               <Link href="/mypage" className="hover:text-teal-600 transition font-medium">マイページ</Link>
-              <Link href="/ranking" className="hover:text-teal-600 transition font-medium">ランキング</Link>
+              {/* <Link href="/ranking" className="hover:text-teal-600 transition font-medium">ランキング</Link> */}
               {userRole === 'admin' && (
                 <Link href="/admin" className="hover:text-teal-600 transition font-medium">管理</Link>
               )}
