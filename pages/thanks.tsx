@@ -19,20 +19,20 @@ type Transaction = {
 
 export default function ThanksPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [allTransactions, setAllTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const [departments, setDepartments] = useState<string[]>([])
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
-  const [showOnlyMine, setShowOnlyMine] = useState<boolean>(false)
-  // ページング用
+  // ページング・フィルタ用
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 50
   const [totalCount, setTotalCount] = useState(0)
+  const [showOnlyMine, setShowOnlyMine] = useState<boolean>(false)
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
+  const [departments, setDepartments] = useState<string[]>([])
 
   useEffect(() => {
     load(page)
-  }, [page])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, showOnlyMine, selectedDepartment])
 
   async function load(pageNum = 1) {
     setLoading(true)
@@ -45,29 +45,25 @@ export default function ThanksPage() {
     setCurrentUserId(emp.id)
 
     // Get all transactions with sender/receiver names, departments and like counts
-    // 件数取得
-    const { count } = await supabase
+    // フィルタ条件
+    let baseQuery = supabase
       .from('coin_transactions')
-      .select('id', { count: 'exact', head: true })
-    setTotalCount(count || 0)
+      .select('id, coins, message, emoji, created_at, sender:sender_id(name, department), receiver:receiver_id(name, department), receiver_id', { count: 'exact' })
+      .order('created_at', { ascending: false })
 
-    // ページ分だけ取得
+    if (showOnlyMine && emp.id) {
+      baseQuery = baseQuery.eq('receiver_id', emp.id)
+    }
+    if (selectedDepartment !== 'all') {
+      // 部署で送信者または受信者が該当するもの
+      baseQuery = baseQuery.or(`sender:sender_id.department.eq.${selectedDepartment},receiver:receiver_id.department.eq.${selectedDepartment}`)
+    }
+
+    // 件数取得＆データ取得（1リクエストで）
     const from = (pageNum - 1) * PAGE_SIZE
     const to = from + PAGE_SIZE - 1
-    const { data: txns } = await supabase
-      .from('coin_transactions')
-      .select(`
-        id,
-        coins,
-        message,
-        emoji,
-        created_at,
-        sender:sender_id(name, department),
-        receiver:receiver_id(name, department)
-      `)
-      .order('created_at', { ascending: false })
-      .range(from, to)
-
+    const { data: txns, count } = await baseQuery.range(from, to)
+    setTotalCount(count || 0)
     if (!txns) return
 
     // Get like counts for each transaction
@@ -107,46 +103,23 @@ export default function ThanksPage() {
       receiver_id: t.receiver_id
     }))
 
-    // Extract unique departments
-    const deptSet = new Set<string>()
-    formatted.forEach(t => {
-      if (t.sender_department) deptSet.add(t.sender_department)
-      if (t.receiver_department) deptSet.add(t.receiver_department)
-    })
-    setDepartments(Array.from(deptSet).sort())
-
-    setAllTransactions(formatted)
+    // 部署リストもサーバーから取得（初回のみ）
+    if (departments.length === 0) {
+      const { data: deptRows } = await supabase
+        .from('employees')
+        .select('department')
+      const deptSet = new Set<string>()
+      deptRows?.forEach((row: any) => {
+        if (row.department) deptSet.add(row.department)
+      })
+      setDepartments(Array.from(deptSet).sort())
+    }
     setTransactions(formatted)
     setLoading(false)
   }
 
 
-  function filterByDepartment(dept: string) {
-    setSelectedDepartment(dept)
-    applyFilters(showOnlyMine, dept)
-  }
 
-  function applyFilters(onlyMine: boolean, dept: string) {
-    let filtered = allTransactions;
-    if (dept !== 'all') {
-      filtered = filtered.filter(
-        t => t.sender_department === dept || t.receiver_department === dept
-      );
-    }
-    if (onlyMine && currentUserId) {
-      filtered = filtered.filter(t => t.receiver_id === currentUserId);
-    }
-    setTransactions(filtered);
-  }
-
-  // currentUserIdから自分の名前を取得する関数
-  // getCurrentUserName関数は不要になったので削除
-
-  // showOnlyMineトグル変更時の副作用
-  useEffect(() => {
-    applyFilters(showOnlyMine, selectedDepartment)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showOnlyMine, allTransactions, selectedDepartment, currentUserId])
 
   async function toggleLike(transactionId: string) {
     if (!currentUserId) return
@@ -155,20 +128,7 @@ export default function ThanksPage() {
     if (!tx) return
 
     // 楽観的UI更新：即座にローカル状態を更新
-    const updatedAllTransactions = allTransactions.map(t => {
-      if (t.id === transactionId) {
-        return {
-          ...t,
-          user_has_liked: !t.user_has_liked,
-          likes_count: t.user_has_liked ? t.likes_count - 1 : t.likes_count + 1
-        }
-      }
-      return t
-    })
-    setAllTransactions(updatedAllTransactions)
-
-    // フィルターされた表示も更新
-    const updatedTransactions = transactions.map(t => {
+    const updatedTransactions = transactions.map((t: Transaction) => {
       if (t.id === transactionId) {
         return {
           ...t,
@@ -227,7 +187,7 @@ export default function ThanksPage() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button
-                        onClick={() => filterByDepartment('all')}
+                        onClick={() => setSelectedDepartment('all')}
                         className={`px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 hover:scale-110 active:scale-95 ${
                           selectedDepartment === 'all'
                             ? 'bg-teal-600 text-white hover:bg-teal-700 shadow-md'
@@ -239,7 +199,7 @@ export default function ThanksPage() {
                       {departments.map(dept => (
                         <button
                           key={dept}
-                          onClick={() => filterByDepartment(dept)}
+                          onClick={() => setSelectedDepartment(dept)}
                           className={`px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 hover:scale-110 active:scale-95 ${
                             selectedDepartment === dept
                               ? 'bg-teal-600 text-white hover:bg-teal-700 shadow-md'
