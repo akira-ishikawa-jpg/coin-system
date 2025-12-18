@@ -154,7 +154,7 @@ export default function AdminPage() {
 
     // Calculate department summary（rowsの内容で集計し、グラフとテーブルの整合性を担保）
     const deptMap: Record<string, { received: number; sent: number; count: number }> = {}
-    (rows || []).forEach((row: any) => {
+        (rows || []).forEach((row: any) => {
       const dept = row.department || '未設定'
       if (!deptMap[dept]) {
         deptMap[dept] = { received: 0, sent: 0, count: 0 }
