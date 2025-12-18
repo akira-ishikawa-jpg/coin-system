@@ -152,11 +152,9 @@ export default function AdminPage() {
       setRows(stats)
     }
 
-    // Calculate department summary
+    // Calculate department summary（rowsの内容で集計し、グラフとテーブルの整合性を担保）
     const deptMap: Record<string, { received: number; sent: number; count: number }> = {}
-    const allRows = data || []
-    
-    allRows.forEach((row: any) => {
+    (stats || []).forEach((row: any) => {
       const dept = row.department || '未設定'
       if (!deptMap[dept]) {
         deptMap[dept] = { received: 0, sent: 0, count: 0 }
@@ -165,14 +163,12 @@ export default function AdminPage() {
       deptMap[dept].sent += row.total_sent || 0
       deptMap[dept].count += 1
     })
-    
     const deptData = Object.entries(deptMap).map(([name, stats]) => ({
       部署: name,
-      平均受取: Math.round(stats.received / stats.count),
-      平均贈呈: Math.round(stats.sent / stats.count),
+      平均受取: stats.count > 0 ? Math.round(stats.received / stats.count) : 0,
+      平均贈呈: stats.count > 0 ? Math.round(stats.sent / stats.count) : 0,
       人数: stats.count
     }))
-    
     setDepartmentData(deptData)
     setLoading(false)
   }
