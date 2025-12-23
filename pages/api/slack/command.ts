@@ -165,7 +165,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           optional: true,
           label: {
             type: 'plain_text',
-            text: 'SalesNowバリュー（任意、複数選択可）'
+            text: 'SalesNowバリュー（複数選択可）'
           },
           element: {
             type: 'checkboxes',
