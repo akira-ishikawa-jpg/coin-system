@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react'
 import Header from '../components/Header'
 import { supabase } from '../lib/supabaseClient'
+import Avatar from '../components/Avatar'
 
 type Transaction = {
   id: string
+  sender_id: string
   sender_name: string
   receiver_name: string
   sender_department: string
   receiver_department: string
+  sender_slack_id?: string
+  receiver_slack_id?: string
   coins: number
   message: string
   emoji?: string
@@ -15,6 +19,8 @@ type Transaction = {
   likes_count: number
   user_has_liked: boolean
   receiver_id: string
+  like_users?: { name: string, slack_id?: string, employee_id: string }[]
+  value_tags?: string[]
 }
 
 export default function ThanksPage() {
@@ -32,7 +38,7 @@ export default function ThanksPage() {
   useEffect(() => {
     load(page)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, showOnlyMine, selectedDepartment])
+  }, [page, showOnlyMine])
 
   async function load(pageNum = 1) {
     setLoading(true)
@@ -48,16 +54,13 @@ export default function ThanksPage() {
     // フィルタ条件
     let baseQuery = supabase
       .from('coin_transactions')
-      .select('id, coins, message, emoji, created_at, sender:sender_id(name, department), receiver:receiver_id(name, department), receiver_id', { count: 'exact' })
+        .select('id, coins, message, emoji, created_at, sender_id, sender:sender_id(name, department, slack_id), receiver:receiver_id(name, department, slack_id), receiver_id, value_tags', { count: 'exact' })
       .order('created_at', { ascending: false })
 
     if (showOnlyMine && emp.id) {
       baseQuery = baseQuery.eq('receiver_id', emp.id)
     }
-    if (selectedDepartment !== 'all') {
-      // 部署で送信者または受信者が該当するもの
-      baseQuery = baseQuery.or(`sender:sender_id.department.eq.${selectedDepartment},receiver:receiver_id.department.eq.${selectedDepartment}`)
-    }
+    // 部署フィルタはフロント側でfilterする（Supabaseのor+リレーションは非対応のため）
 
     // 件数取得＆データ取得（1リクエストで）
     const from = (pageNum - 1) * PAGE_SIZE
@@ -68,39 +71,52 @@ export default function ThanksPage() {
 
     // Get like counts for each transaction
     const txIds = txns.map((t: any) => t.id)
+
+    // いいねした人のslack_id, nameも取得
     const { data: likes } = await supabase
       .from('transaction_likes')
-      .select('transaction_id, employee_id')
+      .select('transaction_id, employee_id, employee:employee_id(name, slack_id)')
       .in('transaction_id', txIds)
 
-    const likesMap: Record<string, { count: number; userLiked: boolean }> = {}
+    // いいね情報をMap化（count, userLiked, users[]）
+    const likesMap: Record<string, { count: number; userLiked: boolean; users: { name: string, slack_id?: string, employee_id: string }[] }> = {}
     txIds.forEach(id => {
-      likesMap[id] = { count: 0, userLiked: false }
+      likesMap[id] = { count: 0, userLiked: false, users: [] }
     })
 
     likes?.forEach((like: any) => {
       if (!likesMap[like.transaction_id]) {
-        likesMap[like.transaction_id] = { count: 0, userLiked: false }
+        likesMap[like.transaction_id] = { count: 0, userLiked: false, users: [] }
       }
       likesMap[like.transaction_id].count++
       if (like.employee_id === emp.id) {
         likesMap[like.transaction_id].userLiked = true
       }
+      likesMap[like.transaction_id].users.push({
+        name: like.employee?.name || '不明',
+        slack_id: like.employee?.slack_id,
+        employee_id: like.employee_id
+      })
     })
 
-    const formatted: Transaction[] = txns.map((t: any) => ({
+    const formatted: Transaction[] & { like_users?: { name: string, slack_id?: string, employee_id: string }[] }[] = txns.map((t: any) => ({
       id: t.id,
+      sender_id: t.sender_id,
       sender_name: t.sender?.name || '-',
       receiver_name: t.receiver?.name || '-',
       sender_department: t.sender?.department || '未設定',
       receiver_department: t.receiver?.department || '未設定',
+      sender_slack_id: t.sender?.slack_id || undefined,
+      receiver_slack_id: t.receiver?.slack_id || undefined,
       coins: t.coins,
       message: t.message || '',
       emoji: t.emoji || '',
       created_at: t.created_at,
       likes_count: likesMap[t.id]?.count || 0,
       user_has_liked: likesMap[t.id]?.userLiked || false,
-      receiver_id: t.receiver_id
+      receiver_id: t.receiver_id,
+      like_users: likesMap[t.id]?.users || [],
+      value_tags: Array.isArray(t.value_tags) ? t.value_tags : []
     }))
 
     // 部署リストもサーバーから取得（初回のみ）
@@ -161,6 +177,13 @@ export default function ThanksPage() {
       console.error('いいね更新エラー:', error)
     }
   }
+
+  // 部署フィルタ適用後のリスト
+  const filteredTransactions = selectedDepartment === 'all'
+    ? transactions
+    : transactions.filter(tx =>
+        tx.sender_department === selectedDepartment || tx.receiver_department === selectedDepartment
+      )
 
   return (
     <>
@@ -228,12 +251,12 @@ export default function ThanksPage() {
 
             {loading ? (
               <p className="text-center text-gray-500">読み込み中...</p>
-            ) : transactions.length === 0 ? (
+            ) : filteredTransactions.length === 0 ? (
               <p className="text-center text-gray-500">まだ感謝が贈られていません</p>
             ) : (
               <>
                 <div className="space-y-4">
-                  {transactions.map((tx, index) => (
+                  {filteredTransactions.map((tx, index) => (
                     <div 
                       key={tx.id} 
                       className="bg-slate-50 border border-slate-200 rounded-lg p-6 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 animate-slide-in"
@@ -242,8 +265,10 @@ export default function ThanksPage() {
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
+                            <Avatar slackId={tx.sender_slack_id} size={32} />
                             <span className="font-bold text-slate-900">{tx.sender_name}</span>
                             <span className="text-gray-500">→</span>
+                            <Avatar slackId={tx.receiver_slack_id} size={32} />
                             <span className="font-bold text-slate-900">{tx.receiver_name}</span>
                             <span className="bg-teal-100 text-teal-700 px-3 py-1 rounded-full text-sm font-bold">
                               {tx.coins} コイン
@@ -253,6 +278,13 @@ export default function ThanksPage() {
                             {tx.emoji && <span className="text-2xl mr-2">{tx.emoji}</span>}
                             {tx.message}
                           </p>
+                          {tx.value_tags && tx.value_tags.length > 0 && (
+                            <div className="flex gap-2 flex-wrap mt-1">
+                              {tx.value_tags.map((v) => (
+                                <span key={v} className="px-3 py-1 rounded-full bg-teal-50 text-teal-700 text-xs font-bold border border-teal-200">#{v}</span>
+                              ))}
+                            </div>
+                          )}
                           <p className="text-xs text-gray-500">
                             {new Date(tx.created_at).toLocaleString('ja-JP')}
                           </p>
@@ -262,16 +294,30 @@ export default function ThanksPage() {
                       <div className="flex items-center gap-3 pt-3 border-t border-slate-200">
                         <button
                           onClick={() => toggleLike(tx.id)}
+                          disabled={currentUserId === tx.sender_id}
                           className={`flex items-center gap-2 px-4 py-2 rounded-md font-semibold transition-all duration-200 hover:scale-110 active:scale-95 ${
                             tx.user_has_liked
                               ? 'bg-teal-600 text-white hover:bg-teal-700 animate-pulse-once'
                               : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                          }`}
+                          } ${currentUserId === tx.sender_id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          title={currentUserId === tx.sender_id ? '自分の投稿にはいいねできません' : ''}
                         >
                           <span className="text-lg">{tx.user_has_liked ? '❤️' : '🤍'}</span>
                           <span>いいね</span>
                           {tx.likes_count > 0 && <span>({tx.likes_count})</span>}
                         </button>
+                        {/* いいねした人のアイコンを横並び表示 */}
+                        <div className="flex items-center gap-1 ml-2">
+                          {tx.like_users && tx.like_users.map(u => (
+                            <span key={u.employee_id} title={u.name} className="group">
+                              <Avatar slackId={u.slack_id} size={24} />
+                              {/* ツールチップ（モバイル対応） */}
+                              <span className="absolute z-50 hidden group-hover:block bg-slate-800 text-white text-xs rounded px-2 py-1 mt-1 ml-2 whitespace-nowrap pointer-events-none shadow-lg">
+                                {u.name}
+                              </span>
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   ))}

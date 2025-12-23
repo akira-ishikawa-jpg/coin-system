@@ -99,23 +99,35 @@ async function checkSpam(sender_id: string, today: string): Promise<Anomaly | nu
 /**
  * 管理者へメール通知を送信（Supabase Auth管理者）
  */
-async function notifyAdmin(anomalies: Anomaly[]): Promise<boolean> {
+async function notifyAdmin(anomalies: Anomaly[], actorId: string): Promise<boolean> {
   if (anomalies.length === 0) return true
 
-  const message = anomalies
-    .map(a => `【${a.type}】\n${a.detail}\n送信元: ${a.sender}, 受信者: ${a.receiver}`)
-    .join('\n\n')
+  // typeごとに日本語で簡潔な説明文を生成
+  const typeToLabel: Record<string, string> = {
+    large_transfer: '大量送付',
+    mutual_transfer: '相互送付',
+    spam: 'スパム送付'
+  }
 
-  // Note: 本番環境ではメール送信サービス（SendGrid など）を使用
-  // ここではログに記録
+  // 1件でも複数件でも簡潔な日本語でまとめる
+  const messages = anomalies.map(a => {
+    let label = typeToLabel[a.type] || a.type
+    // detailは既に日本語なので活用
+    return `【${label}】${a.detail}`
+  })
+
+  const message = messages.join('／')
+
+  // 監査ログには日本語メッセージのみ格納し、actor_idも記録
   await supabase
     .from('audit_logs')
     .insert({
       action: 'anomaly_detected',
-      payload: { anomalies, message }
+      payload: { message },
+      actor_id: actorId
     })
 
-  console.log('Anomalies detected:\n', message)
+  console.log('Anomalies detected:', message)
   return true
 }
 
@@ -140,6 +152,6 @@ export async function detectAnomalies(sender_id: string, receiver_id: string, co
 
   // 管理者への通知
   if (anomalies.length > 0) {
-    await notifyAdmin(anomalies)
+    await notifyAdmin(anomalies, sender_id)
   }
 }

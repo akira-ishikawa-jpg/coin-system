@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS employees (
   created_at timestamptz DEFAULT now()
 );
 
--- Coin transactions (sender -> receiver)
 CREATE TABLE IF NOT EXISTS coin_transactions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   sender_id uuid REFERENCES employees(id) ON DELETE SET NULL,
@@ -22,6 +21,7 @@ CREATE TABLE IF NOT EXISTS coin_transactions (
   coins int NOT NULL CHECK (coins > 0),
   message text,
   emoji text,
+  value_tags text[], -- バリュー（コト志向・仕組み化・多数精鋭）を格納
   week_start date,
   slack_payload jsonb,
   created_at timestamptz DEFAULT now()

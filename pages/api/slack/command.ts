@@ -157,7 +157,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             type: 'plain_text',
             text: '感謝のメッセージ'
           }
-        }
+        },
+        // SalesNowバリュー選択（横並び・説明文付きinputブロック）
+        {
+          type: 'input',
+          block_id: 'value_tags',
+          optional: true,
+          label: {
+            type: 'plain_text',
+            text: 'SalesNowバリュー（任意、複数選択可）'
+          },
+          element: {
+            type: 'checkboxes',
+            action_id: 'value_tags_select',
+            options: [
+              {
+                text: { type: 'plain_text', text: ' #コト志向 ' },
+                value: 'コト志向'
+              },
+              {
+                text: { type: 'plain_text', text: ' #仕組み化 ' },
+                value: '仕組み化'
+              },
+              {
+                text: { type: 'plain_text', text: ' #多数精鋭 ' },
+                value: '多数精鋭'
+              }
+            ]
+          }
+        },
       ],
       private_metadata: JSON.stringify({ sender_id: sender.id })
     }

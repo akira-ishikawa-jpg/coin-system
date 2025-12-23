@@ -17,6 +17,9 @@ export default function SendPage() {
   const [selectedStamps, setSelectedStamps] = useState<string[]>([])
   const [status, setStatus] = useState('')
   const [remaining, setRemaining] = useState<number | null>(null)
+  // バリュー（ハッシュタグ）選択用
+  const valueOptions = ['コト志向', '仕組み化', '多数精鋭']
+  const [selectedValues, setSelectedValues] = useState<string[]>([])
 
   const availableStamps = ['👍', '🎉', '💪', '✨', '🙏', '❤️', '🔥', '⭐', '👏', '🌟']
 
@@ -127,6 +130,7 @@ export default function SendPage() {
         coins, 
         message,
         emoji: selectedStamps.join('') 
+         , value_tags: selectedValues // バリューをAPIに渡す
       }
 
       const res = await fetch('/api/coins/send', {
@@ -237,9 +241,20 @@ export default function SendPage() {
                     onChange={(e) => setCoins(Number(e.target.value))} 
                     className="flex-1 accent-teal-600"
                   />
-                  <span className={`text-2xl font-bold min-w-20 text-right ${
-                    remaining !== null && coins > remaining ? 'text-red-600' : coins > 100 ? 'text-red-600' : 'text-teal-600'
-                  }`}>{coins}</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={remaining !== null ? Math.min(remaining, 100) : 100}
+                    value={coins}
+                    onChange={e => {
+                      let v = Number(e.target.value)
+                      if (isNaN(v)) v = 1
+                      if (v < 1) v = 1
+                      if (remaining !== null && v > Math.min(remaining, 100)) v = Math.min(remaining, 100)
+                      setCoins(v)
+                    }}
+                    className="w-20 text-2xl font-bold text-right border border-slate-300 rounded px-2 py-1 focus:outline-none focus:border-teal-500 transition"
+                  />
                 </div>
                 {coins > 100 && (
                   <p className="text-sm text-red-600 mt-2">1回の送付上限は100枚です</p>
@@ -262,6 +277,39 @@ export default function SendPage() {
                   required
                 />
                 <p className="text-xs text-gray-500 mt-1">{message.length}/300</p>
+              </div>
+
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">SalesNowバリュー（任意、複数選択可）</label>
+                <div className="flex gap-3 flex-wrap">
+                  {valueOptions.map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => {
+                        if (selectedValues.includes(value)) {
+                          setSelectedValues(selectedValues.filter(v => v !== value))
+                        } else {
+                          setSelectedValues([...selectedValues, value])
+                        }
+                      }}
+                      className={`px-4 py-2 rounded-full border-2 font-semibold transition-all duration-200 text-sm ${
+                        selectedValues.includes(value)
+                          ? 'border-teal-500 bg-teal-50 scale-105 shadow-md'
+                          : 'border-slate-200 bg-white hover:border-teal-300 hover:shadow-lg'
+                      }`}
+                    >
+                      #{value}
+                    </button>
+                  ))}
+                </div>
+                {selectedValues.length > 0 && (
+                  <div className="mt-3 p-3 bg-slate-50 rounded-md">
+                    <span className="text-sm text-gray-600">選択中: </span>
+                    <span className="text-base">{selectedValues.map(v => `#${v}`).join(' ')}</span>
+                  </div>
+                )}
               </div>
 
               <div>

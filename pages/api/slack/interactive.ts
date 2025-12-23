@@ -77,6 +77,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const receiverId = values.receiver.receiver_select.selected_option.value // parseInt削除
       const coins = parseInt(values.coins.coins_input.value)
       const message = values.message.message_input.value
+      // バリュー（checkboxes）取得
+      let value_tags: string[] = []
+      if (values.value_tags && values.value_tags.value_tags_select && Array.isArray(values.value_tags.value_tags_select.selected_options)) {
+        value_tags = values.value_tags.value_tags_select.selected_options.map((opt: any) => opt.value)
+      }
       
       console.log('Parsed receiverId:', receiverId)
       console.log('senderId:', privateMetadata.sender_id)
@@ -178,6 +183,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           receiver_id: receiver.id,
           coins,
           message,
+          value_tags,
           week_start: weekStart,
           slack_payload: { from_slack_modal: true }
         })
@@ -210,7 +216,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 type: 'section',
                 text: {
                   type: 'mrkdwn',
-                  text: `🎉 *${sender.name}* → *${receiver.name}* へ *${coins}コイン* を贈りました！`
+                  text: `🎉 *${sender.name}* → *${receiver.name}* へ *${coins}コイン* を贈りました！${value_tags.length ? '\n' + value_tags.map((v: string) => `#${v}`).join(' ') : ''}`
                 }
               },
               {

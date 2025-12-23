@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Avatar from '../components/Avatar'
 import Header from '../components/Header'
 import { supabase } from '../lib/supabaseClient'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
@@ -60,6 +61,28 @@ export default function AdminPage() {
 
   useEffect(() => { load() }, [])
   useEffect(() => { if (activeTab === 'audit') loadAuditLogs() }, [activeTab, auditPage, auditFilterAction, auditFilterUser])
+
+  // rowsが更新されたらdepartmentDataも再計算
+  useEffect(() => {
+    // Calculate department summary（rowsの内容で集計し、グラフとテーブルの整合性を担保）
+    const deptMap: Record<string, { received: number; sent: number; count: number }> = {};
+    (rows || []).forEach((row: any) => {
+      const dept = row.department || '未設定'
+      if (!deptMap[dept]) {
+        deptMap[dept] = { received: 0, sent: 0, count: 0 }
+      }
+      deptMap[dept].received += row.total_received || 0
+      deptMap[dept].sent += row.total_sent || 0
+      deptMap[dept].count += 1
+    })
+    const deptData = Object.entries(deptMap).map(([name, stats]) => ({
+      部署: name,
+      平均受取: stats.count > 0 ? Math.round(stats.received / stats.count) : 0,
+      平均贈呈: stats.count > 0 ? Math.round(stats.sent / stats.count) : 0,
+      人数: stats.count
+    }))
+    setDepartmentData(deptData)
+  }, [rows])
 
   // 排他的にセクションを開くための関数
   function openExclusiveSection(section: 'addUser' | 'bulkUpload' | 'exportOptions') {
@@ -152,24 +175,6 @@ export default function AdminPage() {
       setRows(stats)
     }
 
-    // Calculate department summary（rowsの内容で集計し、グラフとテーブルの整合性を担保）
-    const deptMap: Record<string, { received: number; sent: number; count: number }> = {};
-        (rows || []).forEach((row: any) => {
-      const dept = row.department || '未設定'
-      if (!deptMap[dept]) {
-        deptMap[dept] = { received: 0, sent: 0, count: 0 }
-      }
-      deptMap[dept].received += row.total_received || 0
-      deptMap[dept].sent += row.total_sent || 0
-      deptMap[dept].count += 1
-    })
-    const deptData = Object.entries(deptMap).map(([name, stats]) => ({
-      部署: name,
-      平均受取: stats.count > 0 ? Math.round(stats.received / stats.count) : 0,
-      平均贈呈: stats.count > 0 ? Math.round(stats.sent / stats.count) : 0,
-      人数: stats.count
-    }))
-    setDepartmentData(deptData)
     setLoading(false)
   }
 
@@ -279,9 +284,11 @@ export default function AdminPage() {
   async function loadAuditLogs() {
     setAuditLoading(true)
     try {
+
+      // actor_idでemployeesテーブルとJOINし、実行者名を取得
       let query = supabase
         .from('audit_logs')
-        .select('*, employees(name)', { count: 'exact' })
+        .select('*, actor:employees!audit_logs_actor_id_fkey(name)', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(auditPage * AUDIT_PAGE_SIZE, (auditPage + 1) * AUDIT_PAGE_SIZE - 1)
 
@@ -294,9 +301,10 @@ export default function AdminPage() {
 
       // Filter by user name if specified
       let filteredData = data || []
+
       if (auditFilterUser) {
-        filteredData = filteredData.filter((log: any) => 
-          log.employees?.name?.toLowerCase().includes(auditFilterUser.toLowerCase())
+        filteredData = filteredData.filter((log: any) =>
+          log.actor?.name?.toLowerCase().includes(auditFilterUser.toLowerCase())
         )
       }
 
@@ -855,7 +863,10 @@ export default function AdminPage() {
                     {rows.map((r, idx) => (
                       <>
                         <tr key={r.employee_id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                          <td className="p-3 text-gray-800 font-bold">{r.name}</td>
+                          <td className="p-3 text-gray-800 font-bold flex items-center gap-2">
+                            <Avatar slackId={(r as any).slack_id} size={28} />
+                            {r.name}
+                          </td>
                           <td className="p-3 text-gray-600 text-xs">{r.email}</td>
                           <td className="p-3 text-gray-600">{r.department}</td>
                           <td className="p-3 text-gray-600 text-xs font-mono">{(r as any).slack_id || '未設定'}</td>
@@ -1060,8 +1071,8 @@ export default function AdminPage() {
                                     {log.action}
                                   </span>
                                 </td>
-                                <td className="p-3 text-gray-700">{log.employees?.name || '-'}</td>
-                                <td className="p-3 text-gray-600 text-xs max-w-md truncate">
+                                <td className="p-3 text-gray-700">{log.actor?.name || '-'}</td>
+                                <td className="p-3 text-gray-600 text-xs whitespace-pre font-mono min-w-[300px]">
                                   {typeof log.payload === 'object' 
                                     ? JSON.stringify(log.payload)
                                     : log.payload || '-'}

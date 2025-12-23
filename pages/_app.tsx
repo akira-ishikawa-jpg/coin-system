@@ -1,4 +1,5 @@
 import '../styles/globals.css'
+import '../styles/coin-animations.css'
 import type { AppProps } from 'next/app'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'

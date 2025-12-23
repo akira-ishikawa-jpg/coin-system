@@ -27,6 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (authErr || !authData?.user) return res.status(401).json({ error: 'Unauthorized' })
 
   const { receiver_id, coins, message, emoji } = req.body
+    const value_tags = Array.isArray(req.body.value_tags) ? req.body.value_tags : []
   if (!receiver_id || !coins) return res.status(400).json({ error: 'missing params' })
   
   // バリデーション
@@ -64,7 +65,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     message,
     emoji: emoji || '',
     week_start: weekStart,
-    slack_payload: { from_web: true }
+    slack_payload: { from_web: true },
+    value_tags
   }
   const { data: transaction, error } = await supabase.from('coin_transactions').insert(insertPayload).select().single()
   if (error) return res.status(500).json({ error: 'insert failed' })
@@ -84,7 +86,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             type: 'section',
             text: {
               type: 'mrkdwn',
-              text: `🎉 *${sender.name}* → *${receiver.name}* へ *${coins}コイン* を贈りました！`
+                text: `🎉 *${sender.name}* → *${receiver.name}* へ *${coins}コイン* を贈りました！${value_tags.length ? '\n' + value_tags.map((v: string) => `#${v}`).join(' ') : ''}`
             }
           },
           {
@@ -144,6 +146,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         body: JSON.stringify({
           channel: receiver.slack_id,
           text: `:tada: *${sender.name}* さんから ${coins} コインの感謝が届きました！\n> ${message}`
+           + (value_tags.length ? `\n${value_tags.map((v: string) => `#${v}`).join(' ')}` : '')
         })
       })
     }

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '../lib/supabaseClient'
@@ -95,8 +96,8 @@ export default function Header() {
     <header className="bg-white border-b border-slate-200 fixed top-0 left-0 right-0 z-50 shadow-sm">
       <div className="container mx-auto max-w-5xl px-4 py-4">
         <div className="flex items-center justify-between">
-          <Link href="/" className="font-bold text-slate-900 text-lg tracking-tight">
-            感謝なう
+          <Link href="/" className="flex items-center gap-3 font-bold text-slate-900 text-xl tracking-tight">
+            <Image src="/kansha-heart.png" alt="感謝なうロゴ" width={64} height={64} priority />
           </Link>
           
           {/* ハンバーガーメニューボタン（モバイル） */}
