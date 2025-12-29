@@ -141,6 +141,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             text: 'コイン数 (1-100)'
           }
         },
+        // スタンプ選択（複数可）
+        {
+          type: 'input',
+          block_id: 'stamps',
+          optional: true,
+          label: {
+            type: 'plain_text',
+            text: 'スタンプ（複数選択可）'
+          },
+          element: {
+            type: 'checkboxes',
+            action_id: 'stamps_select',
+            options: [
+              { text: { type: 'plain_text', text: '👍' }, value: '👍' },
+              { text: { type: 'plain_text', text: '🎉' }, value: '🎉' },
+              { text: { type: 'plain_text', text: '💪' }, value: '💪' },
+              { text: { type: 'plain_text', text: '✨' }, value: '✨' },
+              { text: { type: 'plain_text', text: '🙏' }, value: '🙏' },
+              { text: { type: 'plain_text', text: '❤️' }, value: '❤️' },
+              { text: { type: 'plain_text', text: '🔥' }, value: '🔥' },
+              { text: { type: 'plain_text', text: '⭐' }, value: '⭐' },
+              { text: { type: 'plain_text', text: '👏' }, value: '👏' },
+              { text: { type: 'plain_text', text: '🌟' }, value: '🌟' }
+            ]
+          }
+        },
         {
           type: 'input',
           block_id: 'message',

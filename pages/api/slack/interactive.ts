@@ -77,6 +77,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const receiverId = values.receiver.receiver_select.selected_option.value // parseInt削除
       const coins = parseInt(values.coins.coins_input.value)
       const message = values.message.message_input.value
+            // スタンプ（checkboxes）取得
+            let stamps: string[] = []
+            if (values.stamps && values.stamps.stamps_select && Array.isArray(values.stamps.stamps_select.selected_options)) {
+              stamps = values.stamps.stamps_select.selected_options.map((opt: any) => opt.value)
+            }
       // バリュー（checkboxes）取得
       let value_tags: string[] = []
       if (values.value_tags && values.value_tags.value_tags_select && Array.isArray(values.value_tags.value_tags_select.selected_options)) {
@@ -185,6 +190,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           message,
           value_tags,
           week_start: weekStart,
+          emoji: stamps.join(''),
           slack_payload: { from_slack_modal: true }
         })
         .select()
@@ -216,14 +222,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 type: 'section',
                 text: {
                   type: 'mrkdwn',
-                  text: `🎉 *${sender.name}* → *${receiver.name}* へ *${coins}コイン* を贈りました！${value_tags.length ? '\n' + value_tags.map((v: string) => `#${v}`).join(' ') : ''}`
+                  text: `🎉 *${sender.name}* → *${receiver.name}* へ *${coins}コイン* を贈りました！${stamps.length ? '\n' + stamps.join(' ') : ''}${value_tags.length ? '\n' + value_tags.map((v: string) => `#${v}`).join(' ') : ''}`
                 }
               },
               {
                 type: 'section',
                 text: {
                   type: 'mrkdwn',
-                  text: `💬 _${message}_`
+                  text: `_${message}_`
                 }
               },
               {
