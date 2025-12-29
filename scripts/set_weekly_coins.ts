@@ -1,3 +1,7 @@
+
+import 'dotenv/config'
+
+import 'dotenv/config'
 import { createClient } from '@supabase/supabase-js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL || ''
@@ -6,14 +10,14 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 async function setWeeklyCoins() {
-  console.log('週次配布コイン数を500に設定中...')
+  console.log('週次配布コイン数を250に設定中...')
   
-  // 設定を500コインに更新
+  // 設定を250コインに更新
   const { error } = await supabase
     .from('settings')
     .upsert({
       key: 'default_weekly_coins',
-      value: '500'
+      value: '250'
     })
   
   if (error) {
@@ -21,7 +25,7 @@ async function setWeeklyCoins() {
     return
   }
   
-  console.log('✅ 週次配布コイン数を500に設定しました')
+  console.log('✅ 週次配布コイン数を250に設定しました')
   
   // 確認
   const { data } = await supabase

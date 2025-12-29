@@ -4,7 +4,7 @@ import Header from '../components/Header'
 import { supabase } from '../lib/supabaseClient'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
-type Row = { employee_id: string; name: string; email: string; department: string; total_received: number; total_sent: number; total_likes: number }
+type Row = { employee_id: string; name: string; email: string; department: string; role: string; slack_id: string; total_received: number; total_sent: number; total_likes: number; weekly_remaining: number }
 
 export default function AdminPage() {
   const [rows, setRows] = useState<Row[]>([])
@@ -146,34 +146,44 @@ export default function AdminPage() {
     const nextMonth = m === 12 ? 1 : m + 1
     const nextYear = m === 12 ? y + 1 : y
 
-    // aggregate monthly stats (received, sent, likes)
-    const { data } = await supabase.rpc('aggregate_monthly_stats', { year_in: y, month_in: m })
-    // RPC関数でrole情報が取得できない場合はフォールバック処理を使用
-    if (data && data.length > 0 && data[0].role !== undefined) { 
-      setRows((data as any) || []) 
-    } else {
-      // fallback query
-      const { data: employees } = await supabase.from('employees').select('id,name,email,department,role,slack_id')
-      const stats = await Promise.all(
-        (employees || []).map(async (emp: any) => {
-          const { data: recv } = await supabase.from('coin_transactions').select('coins').eq('receiver_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`).not('slack_payload', 'cs', '{\"bonus\":true}')
-          const { data: sent } = await supabase.from('coin_transactions').select('coins').eq('sender_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`).not('slack_payload', 'cs', '{\"bonus\":true}')
-          const { data: likes } = await supabase.from('transaction_likes').select('id, coin_transactions!inner(receiver_id, created_at)').eq('coin_transactions.receiver_id', emp.id).gte('coin_transactions.created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('coin_transactions.created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`).not('coin_transactions.slack_payload', 'cs', '{\"bonus\":true}')
-          return {
-            employee_id: emp.id,
-            name: emp.name,
-            email: emp.email,
-            department: emp.department,
-            role: emp.role,
-            slack_id: emp.slack_id,
-            total_received: (recv || []).reduce((s: any, r: any) => s + (r.coins || 0), 0),
-            total_sent: (sent || []).reduce((s: any, r: any) => s + (r.coins || 0), 0),
-            total_likes: (likes || []).length
-          }
-        })
-      )
-      setRows(stats)
-    }
+    // default_weekly_coins取得
+    const { data: setting } = await supabase.from('settings').select('value').eq('key','default_weekly_coins').limit(1).maybeSingle()
+    const defaultWeekly = setting ? parseInt(setting.value,10) : 250
+
+    // fallback query
+    const { data: employees } = await supabase.from('employees').select('id,name,email,department,role,slack_id')
+    // 今週の開始日
+    const weekStart = (() => {
+      const d = new Date()
+      const day = d.getDay()
+      const diff = (day === 0 ? -6 : 1) - day
+      d.setDate(d.getDate() + diff)
+      d.setHours(0,0,0,0)
+      return d.toISOString().slice(0,10)
+    })()
+    const stats = await Promise.all(
+      (employees || []).map(async (emp: any) => {
+        const { data: recv } = await supabase.from('coin_transactions').select('coins').eq('receiver_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`).not('slack_payload', 'cs', '{"bonus":true}')
+        const { data: sent } = await supabase.from('coin_transactions').select('coins').eq('sender_id', emp.id).gte('created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`).not('slack_payload', 'cs', '{"bonus":true}')
+        const { data: likes } = await supabase.from('transaction_likes').select('id, coin_transactions!inner(receiver_id, created_at)').eq('coin_transactions.receiver_id', emp.id).gte('coin_transactions.created_at', `${y}-${String(m).padStart(2,'0')}-01`).lt('coin_transactions.created_at', `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`).not('coin_transactions.slack_payload', 'cs', '{"bonus":true}')
+        // 今週の送信合計
+        const { data: sentThisWeek } = await supabase.from('coin_transactions').select('coins').eq('sender_id', emp.id).eq('week_start', weekStart)
+        const sentSumThisWeek = (sentThisWeek || []).reduce((s: any, r: any) => s + (r.coins || 0), 0)
+        return {
+          employee_id: emp.id,
+          name: emp.name,
+          email: emp.email,
+          department: emp.department,
+          role: emp.role,
+          slack_id: emp.slack_id,
+          total_received: (recv || []).reduce((s: any, r: any) => s + (r.coins || 0), 0),
+          total_sent: (sent || []).reduce((s: any, r: any) => s + (r.coins || 0), 0),
+          total_likes: (likes || []).length,
+          weekly_remaining: defaultWeekly - sentSumThisWeek
+        }
+      })
+    )
+    setRows(stats)
 
     setLoading(false)
   }
@@ -853,6 +863,7 @@ export default function AdminPage() {
                       <th className="p-3 text-left font-bold text-gray-700">部署</th>
                       <th className="p-3 text-left font-bold text-gray-700">Slack ID</th>
                       <th className="p-3 text-left font-bold text-gray-700">権限</th>
+                      <th className="p-3 text-right font-bold text-gray-700">今週の残コイン</th>
                       <th className="p-3 text-right font-bold text-gray-700">月次受取合計</th>
                       <th className="p-3 text-right font-bold text-gray-700">月次贈呈合計</th>
                       <th className="p-3 text-right font-bold text-gray-700">月次いいね合計</th>
@@ -896,6 +907,7 @@ export default function AdminPage() {
                               )}
                             </div>
                           </td>
+                          <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.weekly_remaining}</td>
                           <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_received}</td>
                           <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_sent}</td>
                           <td className="p-3 text-right font-bold text-teal-600 text-lg">{r.total_likes || 0}</td>
